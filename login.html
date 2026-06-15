@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign in — Agent Platform</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="supabase.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #c9c7be; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -32,6 +33,7 @@
   .btn-login:disabled { opacity: .5; cursor: not-allowed; }
   .error { background: rgba(226,75,74,0.12); border: 1px solid rgba(226,75,74,0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #F09595; margin-bottom: 16px; display: none; }
   .footer-note { font-size: 12px; color: rgba(255,255,255,0.25); text-align: center; margin-top: 20px; }
+  .designed-by { font-size: 11px; color: rgba(255,255,255,0.18); text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -55,26 +57,23 @@
   </div>
 
   <p class="footer-note">Contact your admin if you don't have an account</p>
+  <p class="designed-by">Designed by Vishnu R Mohan</p>
 </div>
 
 <script>
-const _db = supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey);
-
 async function signIn() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const btn = document.getElementById('btn-login');
-  const errEl = document.getElementById('error-msg');
 
   if (!email || !password) { showError('Please enter your email and password.'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Signing in…';
-  errEl.style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
 
   try {
-    const { error } = await _db.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    await DB.auth.signIn(email, password);
     window.location.href = '/index.html';
   } catch (err) {
     showError(err.message || 'Sign in failed. Check your credentials.');
@@ -94,8 +93,8 @@ document.getElementById('password').addEventListener('keydown', e => {
 });
 
 // Redirect if already logged in
-_db.auth.getSession().then(({ data }) => {
-  if (data.session) window.location.href = '/index.html';
+DB.auth.getSession().then(session => {
+  if (session) window.location.href = '/index.html';
 });
 </script>
 </body>

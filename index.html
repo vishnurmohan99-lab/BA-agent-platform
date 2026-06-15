@@ -57,6 +57,15 @@
   .badge-status { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
   .badge-active { background: #E1F5EE; color: #085041; }
   .badge-planning { background: #E6F1FB; color: #0C447C; }
+  @media (max-width: 1024px) {
+    .page { padding: 56px 16px 24px; }
+    .metrics { grid-template-columns: repeat(2,1fr); }
+    .two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .page-header { flex-wrap: wrap; gap: 10px; }
+  }
 </style>
 </head>
 <body>

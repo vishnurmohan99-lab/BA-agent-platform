@@ -50,14 +50,19 @@ const Nav = {
           background: #0f1117; color: #c9c7be; display: flex;
           flex-direction: column; z-index: 100; font-family: system-ui, sans-serif;
           border-right: 1px solid rgba(255,255,255,0.06);
+          transition: transform .25s ease, width .25s ease;
         }
         #ap-nav .nav-logo {
           padding: 20px 18px 16px;
           font-size: 15px; font-weight: 600; color: #fff;
           border-bottom: 1px solid rgba(255,255,255,0.06);
-          letter-spacing: -0.3px;
+          letter-spacing: -0.3px; display: flex; align-items: center; justify-content: space-between;
         }
         #ap-nav .nav-logo span { color: #5DCAA5; }
+        #ap-nav .nav-toggle {
+          display: none; background: none; border: none; color: rgba(255,255,255,0.6);
+          font-size: 20px; cursor: pointer; padding: 2px 4px; line-height: 1;
+        }
         #ap-nav .project-switcher {
           padding: 12px 14px;
           border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -99,9 +104,35 @@ const Nav = {
         }
         #ap-nav .btn-logout:hover { background: rgba(255,255,255,0.1); color: #fff; }
         body { margin-left: 220px; }
+
+        /* Hamburger menu button (shown on tablet) */
+        #ap-nav-open {
+          display: none; position: fixed; top: 12px; left: 12px; z-index: 99;
+          background: #0f1117; border: 1px solid rgba(255,255,255,0.15);
+          color: #fff; border-radius: 8px; padding: 7px 10px; cursor: pointer;
+          font-size: 18px; line-height: 1;
+        }
+        /* Overlay behind nav on tablet */
+        #ap-nav-overlay {
+          display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+          z-index: 99;
+        }
+
+        /* ── Tablet (768px – 1024px) ── */
+        @media (max-width: 1024px) {
+          #ap-nav { transform: translateX(-100%); }
+          #ap-nav.nav-open { transform: translateX(0); }
+          #ap-nav .nav-toggle { display: block; }
+          #ap-nav-open { display: block; }
+          #ap-nav-overlay.visible { display: block; }
+          body { margin-left: 0 !important; }
+        }
       </style>
 
-      <div class="nav-logo">Agent<span>Platform</span></div>
+      <div class="nav-logo">
+        <span>Agent<span>Platform</span></span>
+        <button class="nav-toggle" onclick="Nav.close()" title="Close menu">✕</button>
+      </div>
 
       <div class="project-switcher">
         <select id="nav-project-select" onchange="Nav.switchProject(this.value)">
@@ -158,7 +189,32 @@ const Nav = {
     `;
 
     document.body.prepend(nav);
+
+    // Hamburger open button
+    const openBtn = document.createElement('button');
+    openBtn.id = 'ap-nav-open';
+    openBtn.innerHTML = '☰';
+    openBtn.title = 'Open menu';
+    openBtn.onclick = () => Nav.open();
+    document.body.prepend(openBtn);
+
+    // Overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'ap-nav-overlay';
+    overlay.onclick = () => Nav.close();
+    document.body.prepend(overlay);
+
     this.loadProjects();
+  },
+
+  open() {
+    document.getElementById('ap-nav')?.classList.add('nav-open');
+    document.getElementById('ap-nav-overlay')?.classList.add('visible');
+  },
+
+  close() {
+    document.getElementById('ap-nav')?.classList.remove('nav-open');
+    document.getElementById('ap-nav-overlay')?.classList.remove('visible');
   },
 
   async loadProjects() {

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="nav.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; color: #1a1a18; min-height: 100vh; }
+  .page { padding: 32px 36px; max-width: 1100px; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 600; color: #1a1a18; }
+  .page-subtitle { font-size: 13px; color: #888780; margin-top: 3px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: #1D9E75; color: #fff; }
+  .btn-primary:hover { background: #0F6E56; }
+  .btn-secondary { background: #fff; color: #444; border: 1px solid #e0dfd8; }
+  .btn-secondary:hover { background: #f5f5f0; }
+  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+  .metric { background: #fff; border: 1px solid #e8e7e0; border-radius: 12px; padding: 18px 20px; }
+  .metric-num { font-size: 28px; font-weight: 600; color: #1a1a18; }
+  .metric-label { font-size: 12px; color: #888780; margin-top: 4px; }
+  .metric-sub { font-size: 11px; color: #5DCAA5; margin-top: 6px; font-weight: 500; }
+  .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .card { background: #fff; border: 1px solid #e8e7e0; border-radius: 12px; padding: 20px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #1a1a18; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .project-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f0efe8; cursor: pointer; transition: background .1s; border-radius: 8px; padding: 10px 12px; margin: 0 -12px; }
+  .project-row:hover { background: #f8f8f4; }
+  .project-row:last-child { border-bottom: none; }
+  .project-icon { width: 36px; height: 36px; border-radius: 8px; background: #E1F5EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #0F6E56; flex-shrink: 0; }
+  .project-name { font-size: 14px; font-weight: 500; color: #1a1a18; }
+  .project-meta { font-size: 12px; color: #888780; margin-top: 2px; }
+  .project-stats { margin-left: auto; display: flex; gap: 16px; text-align: right; }
+  .pstat { font-size: 12px; color: #888780; }
+  .pstat strong { display: block; font-size: 14px; font-weight: 600; color: #1a1a18; }
+  .activity-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0efe8; align-items: flex-start; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: #5DCAA5; flex-shrink: 0; margin-top: 5px; }
+  .activity-text { font-size: 13px; color: #444441; line-height: 1.4; }
+  .activity-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .empty { text-align: center; padding: 32px; color: #888780; font-size: 13px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 480px; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: #666; margin-bottom: 5px; }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; }
+  .form-group input:focus, .form-group textarea:focus { border-color: #1D9E75; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .badge-status { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-active { background: #E1F5EE; color: #085041; }
+  .badge-planning { background: #E6F1FB; color: #0C447C; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Dashboard</div>
+      <div class="page-subtitle">All projects at a glance</div>
+    </div>
+    <button class="btn btn-primary" onclick="openNewProject()">
+      <i class="ti ti-plus"></i> New project
+    </button>
+  </div>
+
+  <div class="metrics" id="metrics">
+    <div class="metric"><div class="metric-num" id="m-projects">—</div><div class="metric-label">Projects</div></div>
+    <div class="metric"><div class="metric-num" id="m-stories">—</div><div class="metric-label">Total stories</div><div class="metric-sub" id="m-approved">— approved</div></div>
+    <div class="metric"><div class="metric-num" id="m-tests">—</div><div class="metric-label">Test cases</div></div>
+    <div class="metric"><div class="metric-num" id="m-risks">—</div><div class="metric-label">Open risks</div></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Projects <a href="#" style="font-size:12px;color:#1D9E75;text-decoration:none" onclick="openNewProject()">+ New</a></div>
+      <div id="projects-list"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recent activity</div>
+      <div id="activity-list"><div class="empty">Select a project to see activity</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- New Project Modal -->
+<div class="modal-overlay" id="modal-new-project">
+  <div class="modal">
+    <h3>Create new project</h3>
+    <div class="form-group">
+      <label>Project name *</label>
+      <input type="text" id="np-name" placeholder="e.g. Tuxi Ride Platform">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="np-desc" placeholder="What does this project do?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Industry / domain</label>
+      <input type="text" id="np-industry" placeholder="e.g. ride-hailing, fintech, healthcare">
+    </div>
+    <div class="form-group">
+      <label>Story ID prefix</label>
+      <input type="text" id="np-prefix" placeholder="e.g. TUX, PROJ, APP" maxlength="6">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createProject()">Create project</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function init() {
+  await Nav.init();
+  await loadDashboard();
+}
+
+async function loadDashboard() {
+  const projects = await DB.projects.list();
+  renderProjects(projects);
+  renderMetrics(projects);
+
+  if (projects.length > 0) {
+    const pid = localStorage.getItem('currentProjectId') || projects[0].id;
+    loadActivity(pid);
+  }
+}
+
+function renderProjects(projects) {
+  const el = document.getElementById('projects-list');
+  if (!projects.length) {
+    el.innerHTML = '<div class="empty">No projects yet. Create your first one.</div>';
+    return;
+  }
+  el.innerHTML = projects.map(p => `
+    <div class="project-row" onclick="openProject('${p.id}')">
+      <div class="project-icon">${p.name.charAt(0).toUpperCase()}</div>
+      <div>
+        <div class="project-name">${p.name}</div>
+        <div class="project-meta">${p.industry || 'No industry set'} · ${p.story_prefix || 'STORY'}-xxx</div>
+      </div>
+      <div class="project-stats">
+        <div class="pstat"><strong>${p.story_count || 0}</strong>stories</div>
+        <div class="pstat"><strong>${p.test_count || 0}</strong>tests</div>
+      </div>
+      <span class="badge-status badge-active">Active</span>
+    </div>
+  `).join('');
+}
+
+async function renderMetrics(projects) {
+  document.getElementById('m-projects').textContent = projects.length;
+}
+
+async function loadActivity(projectId) {
+  const items = await DB.activity.list(projectId, 20);
+  const el = document.getElementById('activity-list');
+  if (!items.length) { el.innerHTML = '<div class="empty">No activity yet</div>'; return; }
+  el.innerHTML = items.map(a => `
+    <div class="activity-item">
+      <div class="activity-dot"></div>
+      <div>
+        <div class="activity-text">${a.description}</div>
+        <div class="activity-time">${a.users?.full_name || 'System'} · ${timeAgo(a.created_at)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openProject(id) {
+  localStorage.setItem('currentProjectId', id);
+  window.location.href = '/stories.html';
+}
+
+function openNewProject() {
+  document.getElementById('modal-new-project').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-new-project').classList.remove('open');
+}
+
+async function createProject() {
+  const name = document.getElementById('np-name').value.trim();
+  if (!name) { alert('Project name is required.'); return; }
+  try {
+    const project = await DB.projects.create({
+      name,
+      description: document.getElementById('np-desc').value.trim(),
+      industry: document.getElementById('np-industry').value.trim(),
+      story_prefix: document.getElementById('np-prefix').value.trim().toUpperCase() || 'STORY',
+      status: 'active',
+    });
+    localStorage.setItem('currentProjectId', project.id);
+    closeModal();
+    window.location.href = '/settings.html';
+  } catch (err) {
+    alert('Error creating project: ' + err.message);
+  }
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+init();
+</script>
+</body>
+</html>

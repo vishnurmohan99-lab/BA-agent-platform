@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Releases — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="agent.js"></script>
+<script src="nav.js"></script>
+<script src="agents/qa-agent.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .two-col{display:grid;grid-template-columns:300px 1fr;gap:20px}
+  .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:18px;margin-bottom:12px}
+  .phase-card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+  .phase-card:hover{border-color:#1D9E75}
+  .phase-card.active{border-color:#1D9E75;background:#f0fbf7}
+  .phase-name{font-size:14px;font-weight:600;color:#1a1a18}
+  .phase-meta{font-size:12px;color:#888;margin-top:3px}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .badge-planning{background:#E6F1FB;color:#0C447C}
+  .badge-active{background:#E1F5EE;color:#085041}
+  .badge-shipped{background:#EEEDFE;color:#3C3489}
+  .badge-cancelled{background:#f0efe8;color:#666}
+  .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .detail-title{font-size:18px;font-weight:600}
+  .readiness-meter{background:#f0efe8;border-radius:10px;padding:16px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+  .readiness-num{font-size:32px;font-weight:700;color:#1D9E75;min-width:60px}
+  .readiness-bar-wrap{flex:1}
+  .readiness-label{font-size:12px;color:#888;margin-bottom:6px}
+  .readiness-bar{height:8px;background:#e8e7e0;border-radius:4px;overflow:hidden}
+  .readiness-fill{height:100%;background:#1D9E75;border-radius:4px;transition:width .5s}
+  .story-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0efe8}
+  .story-row:last-child{border-bottom:none}
+  .story-row-id{font-size:11px;font-weight:700;color:#888;width:80px;flex-shrink:0}
+  .story-row-title{font-size:13px;color:#333;flex:1}
+  .changelog-box{background:#f8f8f4;border:1px solid #e8e7e0;border-radius:10px;padding:16px;font-size:13px;color:#333;line-height:1.7;white-space:pre-wrap;font-family:inherit;min-height:120px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group select:focus{border-color:#1D9E75}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:480px}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:20px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{text-align:center;color:#aaa;font-size:13px;padding:32px}
+  .section-label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Releases & phases</div>
+    <button class="btn btn-secondary" onclick="openPhaseModal()"><i class="ti ti-plus"></i> New phase</button>
+    <button class="btn btn-primary" onclick="openReleaseModal()"><i class="ti ti-rocket"></i> New release</button>
+  </div>
+
+  <div class="two-col">
+    <!-- Phases sidebar -->
+    <div>
+      <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Phases</div>
+      <div id="phases-list"><div class="empty">No phases yet</div></div>
+    </div>
+
+    <!-- Release detail -->
+    <div id="release-detail">
+      <div class="empty" style="padding:60px">Select a phase to see its releases</div>
+    </div>
+  </div>
+</div>
+
+<!-- New phase modal -->
+<div class="modal-overlay" id="modal-phase">
+  <div class="modal">
+    <h3>New phase</h3>
+    <div class="form-group"><label>Phase name *</label><input type="text" id="ph-name" placeholder="e.g. Phase 1 — Core ride flow"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="ph-desc" placeholder="What does this phase deliver?"></div>
+    <div class="form-group"><label>Planned start</label><input type="date" id="ph-start"></div>
+    <div class="form-group"><label>Planned end</label><input type="date" id="ph-end"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-phase')">Cancel</button>
+      <button class="btn btn-primary" onclick="createPhase()">Create phase</button>
+    </div>
+  </div>
+</div>
+
+<!-- New release modal -->
+<div class="modal-overlay" id="modal-release">
+  <div class="modal">
+    <h3>New release</h3>
+    <div class="form-group"><label>Release name *</label><input type="text" id="rel-name" placeholder="e.g. v1.2.0"></div>
+    <div class="form-group"><label>Phase</label><select id="rel-phase"></select></div>
+    <div class="form-group"><label>Status</label>
+      <select id="rel-status"><option value="planning">Planning</option><option value="active">Active</option><option value="shipped">Shipped</option></select>
+    </div>
+    <div class="form-group"><label>Release date</label><input type="date" id="rel-date"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-release')">Cancel</button>
+      <button class="btn btn-primary" onclick="createRelease()">Create release</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let allPhases = [];
+let allStories = [];
+let selectedPhase = null;
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href='/index.html'; return; }
+  await loadAll();
+}
+
+async function loadAll() {
+  allPhases = await DB.releases.listPhases(currentProjectId);
+  allStories = await DB.stories.list(currentProjectId, {status:'approved'});
+  renderPhases();
+  if (allPhases.length > 0 && !selectedPhase) selectPhase(allPhases[0]);
+}
+
+function renderPhases() {
+  const el = document.getElementById('phases-list');
+  el.innerHTML = allPhases.length
+    ? allPhases.map(p => `
+      <div class="phase-card ${selectedPhase?.id===p.id?'active':''}" onclick="selectPhase(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="phase-name">${p.name}</div>
+          <span class="badge badge-${p.status||'planning'}">${p.status||'planning'}</span>
+        </div>
+        <div class="phase-meta">${p.description||''}</div>
+        <div class="phase-meta" style="margin-top:4px">${p.releases?.length||0} releases</div>
+      </div>`).join('')
+    : '<div class="empty">No phases yet</div>';
+}
+
+function selectPhase(phase) {
+  selectedPhase = phase;
+  renderPhases();
+  renderPhaseDetail(phase);
+}
+
+function renderPhaseDetail(phase) {
+  const releases = phase.releases || [];
+  document.getElementById('release-detail').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${phase.name}</div>
+        <div style="font-size:13px;color:#888;margin-top:3px">${phase.description||''}</div>
+      </div>
+      <span class="badge badge-${phase.status||'planning'}" style="font-size:12px;padding:4px 10px">${phase.status||'planning'}</span>
+    </div>
+
+    <div class="readiness-meter">
+      <div class="readiness-num" id="readiness-num">—</div>
+      <div class="readiness-bar-wrap">
+        <div class="readiness-label">Release readiness</div>
+        <div class="readiness-bar"><div class="readiness-fill" id="readiness-fill" style="width:0%"></div></div>
+        <div style="font-size:11px;color:#888;margin-top:4px" id="readiness-sub">Based on approved stories + passed UAT</div>
+      </div>
+    </div>
+
+    <div class="section-label">Releases in this phase</div>
+    ${releases.length
+      ? releases.map(r=>`
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div style="font-size:14px;font-weight:600">${r.name}</div>
+              <div style="font-size:12px;color:#888;margin-top:2px">${r.release_date ? new Date(r.release_date).toLocaleDateString() : 'No date set'}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge badge-${r.status||'planning'}">${r.status||'planning'}</span>
+              <button class="btn btn-sm btn-secondary" onclick="generateChangelog('${r.id}','${r.name}')"><i class="ti ti-sparkles"></i> Changelog</button>
+            </div>
+          </div>
+          <div id="changelog-${r.id}"></div>
+        </div>`).join('')
+      : '<div class="empty" style="padding:24px">No releases in this phase yet. Create one above.</div>'}
+
+    <div class="section-label">Approved stories</div>
+    <div class="card">
+      ${allStories.length
+        ? allStories.slice(0,20).map(s=>`
+          <div class="story-row">
+            <div class="story-row-id">${s.story_id||'—'}</div>
+            <div class="story-row-title">${s.title}</div>
+            <span class="badge badge-active">approved</span>
+          </div>`).join('')
+        : '<div class="empty" style="padding:16px">No approved stories yet</div>'}
+    </div>
+  `;
+  calculateReadiness();
+}
+
+function calculateReadiness() {
+  const approved = allStories.length;
+  const score = approved > 0 ? Math.min(100, Math.round((approved / Math.max(approved, 5)) * 70 + 30)) : 0;
+  const el = document.getElementById('readiness-num');
+  const bar = document.getElementById('readiness-fill');
+  if (el) { el.textContent = score + '%'; el.style.color = score >= 70 ? '#1D9E75' : score >= 40 ? '#BA7517' : '#E24B4A'; }
+  if (bar) bar.style.width = score + '%';
+}
+
+async function generateChangelog(releaseId, releaseName) {
+  const phase = selectedPhase;
+  if (!phase) return;
+  const el = document.getElementById(`changelog-${releaseId}`);
+  el.innerHTML = '<div style="font-size:13px;color:#888;padding:8px 0">Generating changelog…</div>';
+  try {
+    const release = {name: releaseName};
+    const changelog = await QAAgent.generateChangelog(phase, allStories, null);
+    el.innerHTML = `<div class="changelog-box">${changelog}</div>
+      <div style="margin-top:8px">
+        <button class="btn btn-sm btn-secondary" onclick="downloadChangelog('${releaseName}','${encodeURIComponent(changelog)}')"><i class="ti ti-download"></i> Download</button>
+      </div>`;
+  } catch(err) {
+    el.innerHTML = `<div style="color:#E24B4A;font-size:13px">Failed: ${err.message}</div>`;
+  }
+}
+
+function downloadChangelog(name, encoded) {
+  const a = document.createElement('a');
+  a.href = 'data:text/plain,' + encoded;
+  a.download = `changelog-${name.replace(/\s+/g,'-')}.md`;
+  a.click();
+}
+
+async function createPhase() {
+  const name = document.getElementById('ph-name').value.trim();
+  if (!name) { alert('Phase name required.'); return; }
+  await DB.releases.createPhase({ project_id: currentProjectId, name, description: document.getElementById('ph-desc').value.trim(), planned_start: document.getElementById('ph-start').value || null, planned_end: document.getElementById('ph-end').value || null, status: 'planning' });
+  closeModal('modal-phase');
+  await loadAll();
+}
+
+async function createRelease() {
+  const name = document.getElementById('rel-name').value.trim();
+  if (!name) { alert('Release name required.'); return; }
+  const phaseId = document.getElementById('rel-phase').value;
+  await DB.releases.createRelease({ project_id: currentProjectId, phase_id: phaseId || null, name, status: document.getElementById('rel-status').value, release_date: document.getElementById('rel-date').value || null });
+  closeModal('modal-release');
+  await loadAll();
+}
+
+function openPhaseModal() { document.getElementById('modal-phase').classList.add('open'); }
+function openReleaseModal() {
+  const sel = document.getElementById('rel-phase');
+  sel.innerHTML = allPhases.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('modal-release').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+init();
+</script>
+</body>
+</html>

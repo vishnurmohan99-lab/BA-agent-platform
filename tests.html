@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Cases & UAT — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="agent.js"></script>
+<script src="nav.js"></script>
+<script src="agents/qa-agent.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-secondary:hover{background:#f0f0eb}
+  .btn-danger{background:#fff;color:#A32D2D;border:1px solid #f0c0c0}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .tabs{display:flex;gap:0;border-bottom:2px solid #e8e7e0;margin-bottom:24px}
+  .tab{padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+  .tab.active{color:#1D9E75;border-bottom-color:#1D9E75}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+  .metric{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:16px 18px}
+  .metric-num{font-size:26px;font-weight:600;color:#1a1a18}
+  .metric-label{font-size:12px;color:#888;margin-top:3px}
+  .progress-bar{height:6px;background:#e8e7e0;border-radius:3px;margin-top:10px;overflow:hidden}
+  .progress-fill{height:100%;background:#1D9E75;border-radius:3px;transition:width .3s}
+  .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:20px;margin-bottom:16px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .card-title{font-size:14px;font-weight:600}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;border-bottom:2px solid #e8e7e0}
+  td{padding:10px 12px;border-bottom:1px solid #f0efe8;font-size:13px;color:#333;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafaf6}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .badge-pass{background:#E1F5EE;color:#085041}
+  .badge-fail{background:#FCEBEB;color:#A32D2D}
+  .badge-pending{background:#f0efe8;color:#666}
+  .badge-high{background:#FCEBEB;color:#A32D2D}
+  .badge-medium{background:#FAEEDA;color:#633806}
+  .badge-low{background:#E1F5EE;color:#085041}
+  .badge-open{background:#FAEEDA;color:#633806}
+  .badge-closed{background:#E1F5EE;color:#085041}
+  .badge-infix{background:#E6F1FB;color:#0C447C}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:20px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus{border-color:#1D9E75}
+  .form-group textarea{resize:vertical;min-height:80px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .signoff-report{background:#f8f8f4;border:1px solid #e8e7e0;border-radius:10px;padding:20px;font-size:13px;line-height:1.7}
+  .signoff-report h4{font-size:14px;font-weight:600;margin-bottom:8px;color:#1a1a18}
+  .result-btn{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid;transition:all .15s}
+  .result-btn.pass{background:#E1F5EE;color:#085041;border-color:#9FE1CB}
+  .result-btn.fail{background:#FCEBEB;color:#A32D2D;border-color:#F7C1C1}
+  .result-btn.active-pass{background:#1D9E75;color:#fff;border-color:#1D9E75}
+  .result-btn.active-fail{background:#E24B4A;color:#fff;border-color:#E24B4A}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Test cases & UAT</div>
+    <button class="btn btn-secondary" onclick="openDefectModal()"><i class="ti ti-bug"></i> Raise defect</button>
+    <button class="btn btn-secondary" onclick="openUATModal()"><i class="ti ti-clipboard-check"></i> New UAT session</button>
+    <button class="btn btn-primary" onclick="openGenerateModal()"><i class="ti ti-sparkles"></i> Generate test cases</button>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-num" id="m-total">0</div>
+      <div class="metric-label">Test cases</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num" id="m-coverage" style="color:#1D9E75">0%</div>
+      <div class="metric-label">Story coverage</div>
+      <div class="progress-bar"><div class="progress-fill" id="coverage-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-num" id="m-pass" style="color:#1D9E75">0</div>
+      <div class="metric-label">Passed (latest UAT)</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num" id="m-defects" style="color:#E24B4A">0</div>
+      <div class="metric-label">Open defects</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchMainTab('test-cases')">Test cases</div>
+    <div class="tab" onclick="switchMainTab('uat')">UAT sessions</div>
+    <div class="tab" onclick="switchMainTab('defects')">Defects</div>
+  </div>
+
+  <!-- Test cases tab -->
+  <div class="tab-content active" id="tab-test-cases">
+    <div class="card">
+      <table>
+        <thead><tr><th>Test case</th><th>Story</th><th>Type</th><th>Priority</th></tr></thead>
+        <tbody id="test-cases-tbody"><tr><td colspan="4" style="text-align:center;color:#aaa;padding:32px">No test cases yet. Generate from approved stories.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- UAT sessions tab -->
+  <div class="tab-content" id="tab-uat">
+    <div id="uat-sessions-list"></div>
+  </div>
+
+  <!-- Defects tab -->
+  <div class="tab-content" id="tab-defects">
+    <div class="card">
+      <table>
+        <thead><tr><th>Defect</th><th>Severity</th><th>Status</th><th>Linked test</th><th>Actions</th></tr></thead>
+        <tbody id="defects-tbody"><tr><td colspan="5" style="text-align:center;color:#aaa;padding:32px">No defects raised</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Generate test cases modal -->
+<div class="modal-overlay" id="modal-generate">
+  <div class="modal">
+    <h3>Generate test cases</h3>
+    <div class="form-group">
+      <label>Select approved stories to generate from</label>
+      <select id="gen-stories" multiple style="min-height:120px"></select>
+      <div style="font-size:11px;color:#888;margin-top:4px">Hold Ctrl/Cmd to select multiple</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-generate')">Cancel</button>
+      <button class="btn btn-primary" id="btn-gen-tests" onclick="generateTests()"><i class="ti ti-sparkles"></i> Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- New UAT session modal -->
+<div class="modal-overlay" id="modal-uat">
+  <div class="modal">
+    <h3>New UAT session</h3>
+    <div class="form-group"><label>Session name *</label><input type="text" id="uat-name" placeholder="e.g. Sprint 3 UAT"></div>
+    <div class="form-group"><label>Tester name</label><input type="text" id="uat-tester" placeholder="Name of person running UAT"></div>
+    <div class="form-group"><label>Notes</label><textarea id="uat-notes" placeholder="Any context for this session…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-uat')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUATSession()">Create session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Raise defect modal -->
+<div class="modal-overlay" id="modal-defect">
+  <div class="modal">
+    <h3>Raise defect</h3>
+    <div class="form-group"><label>Title *</label><input type="text" id="def-title" placeholder="Short description of the defect"></div>
+    <div class="form-group"><label>Description</label><textarea id="def-desc" placeholder="Steps to reproduce, actual vs expected…"></textarea></div>
+    <div class="form-group"><label>Severity</label>
+      <select id="def-severity"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+    </div>
+    <div class="form-group"><label>Assigned to</label><input type="text" id="def-assignee" placeholder="Name or email"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-defect')">Cancel</button>
+      <button class="btn btn-primary" onclick="createDefect()">Raise defect</button>
+    </div>
+  </div>
+</div>
+
+<!-- UAT run modal -->
+<div class="modal-overlay" id="modal-uat-run">
+  <div class="modal" style="max-width:640px">
+    <h3 id="uat-run-title">Run UAT session</h3>
+    <div id="uat-run-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-uat-run')">Close</button>
+      <button class="btn btn-primary" id="btn-signoff" onclick="signOffUAT()"><i class="ti ti-check"></i> Sign off session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let allTestCases = [];
+let allDefects = [];
+let uatSessions = [];
+let currentUATSession = null;
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { alert('Please select a project first.'); window.location.href='/index.html'; return; }
+  await loadAll();
+}
+
+async function loadAll() {
+  allTestCases = await DB.testCases.list(currentProjectId);
+  allDefects = await DB.defects.list(currentProjectId);
+  uatSessions = await DB.uat.getSessions(currentProjectId);
+  renderTestCases();
+  renderDefects();
+  renderUATSessions();
+  updateMetrics();
+}
+
+function updateMetrics() {
+  document.getElementById('m-total').textContent = allTestCases.length;
+  const openDef = allDefects.filter(d => d.status !== 'closed').length;
+  document.getElementById('m-defects').textContent = openDef;
+
+  const lastSession = uatSessions[0];
+  if (lastSession?.uat_results) {
+    const results = lastSession.uat_results;
+    const passed = results.filter(r => r.result === 'pass').length;
+    document.getElementById('m-pass').textContent = passed;
+  }
+
+  const storiesWithTests = new Set(allTestCases.map(t => t.story_id).filter(Boolean));
+  const pct = allTestCases.length > 0 ? Math.round((storiesWithTests.size / Math.max(allTestCases.length, 1)) * 100) : 0;
+  document.getElementById('m-coverage').textContent = pct + '%';
+  document.getElementById('coverage-bar').style.width = pct + '%';
+}
+
+function renderTestCases() {
+  const tbody = document.getElementById('test-cases-tbody');
+  tbody.innerHTML = allTestCases.length
+    ? allTestCases.map(t => `<tr>
+        <td><div style="font-weight:500">${t.title}</div><div style="font-size:11px;color:#aaa;margin-top:2px">${(t.steps||[]).join(' → ')}</div></td>
+        <td style="font-size:12px;color:#888">${t.story_id||'—'}</td>
+        <td><span class="badge badge-pending">${t.type||'functional'}</span></td>
+        <td><span class="badge badge-${t.priority||'medium'}">${t.priority||'medium'}</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:32px">No test cases yet. Generate from approved stories.</td></tr>';
+}
+
+function renderDefects() {
+  const tbody = document.getElementById('defects-tbody');
+  tbody.innerHTML = allDefects.length
+    ? allDefects.map(d => `<tr>
+        <td><div style="font-weight:500">${d.title}</div><div style="font-size:11px;color:#aaa;margin-top:2px">${d.description||''}</div></td>
+        <td><span class="badge badge-${d.severity||'medium'}">${d.severity||'medium'}</span></td>
+        <td><span class="badge badge-${d.status==='closed'?'closed':d.status==='in_fix'?'infix':'open'}">${d.status||'open'}</span></td>
+        <td style="font-size:12px;color:#888">${d.test_case_id||'—'}</td>
+        <td>
+          ${d.status!=='closed'?`<button class="btn btn-sm btn-secondary" onclick="updateDefectStatus('${d.id}','in_fix')">In fix</button>
+          <button class="btn btn-sm btn-secondary" onclick="updateDefectStatus('${d.id}','closed')">Close</button>`:'<span style="color:#aaa;font-size:12px">Closed</span>'}
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:32px">No defects raised</td></tr>';
+}
+
+function renderUATSessions() {
+  const el = document.getElementById('uat-sessions-list');
+  el.innerHTML = uatSessions.length
+    ? uatSessions.map(s => {
+        const results = s.uat_results || [];
+        const pass = results.filter(r=>r.result==='pass').length;
+        const fail = results.filter(r=>r.result==='fail').length;
+        const total = allTestCases.length;
+        return `<div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${s.name}</div>
+              <div style="font-size:12px;color:#888;margin-top:3px">Tester: ${s.tester_name||'—'} · ${new Date(s.created_at).toLocaleDateString()}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge ${s.status==='signed_off'?'badge-pass':'badge-pending'}">${s.status||'in progress'}</span>
+              ${s.status!=='signed_off'?`<button class="btn btn-sm btn-primary" onclick="runUAT('${s.id}')">Run UAT</button>`:`<button class="btn btn-sm btn-secondary" onclick="downloadReport('${s.id}')"><i class="ti ti-download"></i> Report</button>`}
+            </div>
+          </div>
+          <div style="display:flex;gap:20px;font-size:13px">
+            <span style="color:#1D9E75;font-weight:500">${pass} passed</span>
+            <span style="color:#E24B4A;font-weight:500">${fail} failed</span>
+            <span style="color:#888">${total - pass - fail} pending</span>
+          </div>
+          ${s.status==='signed_off'?`<div style="font-size:12px;color:#085041;background:#E1F5EE;border-radius:6px;padding:8px 12px;margin-top:10px">Signed off · ${new Date(s.signed_off_at).toLocaleString()}</div>`:''}
+        </div>`;
+      }).join('')
+    : '<div style="text-align:center;color:#aaa;font-size:13px;padding:32px">No UAT sessions yet</div>';
+}
+
+async function openGenerateModal() {
+  const stories = await DB.stories.list(currentProjectId, {status:'approved'});
+  const sel = document.getElementById('gen-stories');
+  sel.innerHTML = stories.map(s => `<option value="${s.id}">${s.story_id||''} — ${s.title}</option>`).join('');
+  document.getElementById('modal-generate').classList.add('open');
+}
+
+async function generateTests() {
+  const sel = document.getElementById('gen-stories');
+  const ids = [...sel.selectedOptions].map(o=>o.value);
+  if (!ids.length) { alert('Select at least one story.'); return; }
+  const btn = document.getElementById('btn-gen-tests');
+  btn.innerHTML = '<span class="spinner"></span> Generating…'; btn.disabled = true;
+  try {
+    const stories = await Promise.all(ids.map(id => DB.stories.get(id)));
+    const projectConfig = await DB.agentConfig.get(currentProjectId);
+    const tests = await QAAgent.generateTestCases(stories, projectConfig);
+    const rows = tests.map(t => ({ ...t, project_id: currentProjectId, story_id: t.story_id }));
+    await DB.testCases.bulkCreate(rows);
+    closeModal('modal-generate');
+    await loadAll();
+  } catch(err) { alert('Generation failed: ' + err.message); }
+  finally { btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate'; btn.disabled = false; }
+}
+
+async function createUATSession() {
+  const name = document.getElementById('uat-name').value.trim();
+  if (!name) { alert('Session name required.'); return; }
+  await DB.uat.createSession({ project_id: currentProjectId, name, tester_name: document.getElementById('uat-tester').value.trim(), notes: document.getElementById('uat-notes').value.trim(), status: 'in_progress' });
+  closeModal('modal-uat');
+  await loadAll();
+}
+
+async function createDefect() {
+  const title = document.getElementById('def-title').value.trim();
+  if (!title) { alert('Title required.'); return; }
+  await DB.defects.create({ project_id: currentProjectId, title, description: document.getElementById('def-desc').value.trim(), severity: document.getElementById('def-severity').value, assignee: document.getElementById('def-assignee').value.trim(), status: 'open' });
+  closeModal('modal-defect');
+  await loadAll();
+}
+
+async function updateDefectStatus(id, status) {
+  await DB.defects.update(id, {status});
+  await loadAll();
+}
+
+async function runUAT(sessionId) {
+  currentUATSession = uatSessions.find(s=>s.id===sessionId);
+  const results = currentUATSession.uat_results || [];
+  document.getElementById('uat-run-title').textContent = `UAT: ${currentUATSession.name}`;
+  document.getElementById('uat-run-body').innerHTML = allTestCases.length
+    ? allTestCases.map(tc => {
+        const r = results.find(res=>res.test_case_id===tc.id);
+        return `<div style="padding:12px 0;border-bottom:1px solid #f0efe8">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px">${tc.title}</div>
+          <div style="font-size:12px;color:#888;margin-bottom:8px">${(tc.steps||[]).join(' → ')}</div>
+          <div style="font-size:12px;font-weight:500;color:#333;margin-bottom:6px">Expected: ${tc.expected_result||'—'}</div>
+          <div style="display:flex;gap:8px">
+            <button class="result-btn pass ${r?.result==='pass'?'active-pass':''}" onclick="setResult('${tc.id}','pass',this)">Pass</button>
+            <button class="result-btn fail ${r?.result==='fail'?'active-fail':''}" onclick="setResult('${tc.id}','fail',this)">Fail</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="color:#aaa;text-align:center;padding:24px">No test cases to run</div>';
+  document.getElementById('modal-uat-run').classList.add('open');
+}
+
+async function setResult(testCaseId, result, btn) {
+  btn.closest('div').querySelectorAll('.result-btn').forEach(b => { b.classList.remove('active-pass','active-fail'); });
+  btn.classList.add(result==='pass'?'active-pass':'active-fail');
+  await DB.uat.logResult({ session_id: currentUATSession.id, test_case_id: testCaseId, result });
+}
+
+async function signOffUAT() {
+  if (!currentUATSession) return;
+  if (!confirm('Sign off this UAT session? This marks it as complete.')) return;
+  await DB.uat.signOff(currentUATSession.id, currentProjectId);
+  closeModal('modal-uat-run');
+  await loadAll();
+}
+
+async function downloadReport(sessionId) {
+  const session = uatSessions.find(s=>s.id===sessionId);
+  if (!session) return;
+  const results = session.uat_results || [];
+  const pass = results.filter(r=>r.result==='pass').length;
+  const fail = results.filter(r=>r.result==='fail').length;
+  const report = `UAT SIGN-OFF REPORT\n${'='.repeat(40)}\n\nSession: ${session.name}\nTester: ${session.tester_name||'—'}\nDate: ${new Date(session.created_at).toLocaleDateString()}\nSigned off: ${session.signed_off_at ? new Date(session.signed_off_at).toLocaleString() : '—'}\n\nRESULTS SUMMARY\n${'─'.repeat(30)}\nTotal test cases: ${allTestCases.length}\nPassed: ${pass}\nFailed: ${fail}\nPending: ${allTestCases.length - pass - fail}\nPass rate: ${allTestCases.length ? Math.round(pass/allTestCases.length*100) : 0}%\n\nSTATUS: ${session.status==='signed_off'?'SIGNED OFF ✓':'IN PROGRESS'}\n`;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain,' + encodeURIComponent(report);
+  a.download = `UAT-report-${session.name.replace(/\s+/g,'-')}.txt`;
+  a.click();
+}
+
+function switchMainTab(tab) {
+  document.querySelectorAll('.tabs .tab').forEach((t,i)=>t.classList.toggle('active',['test-cases','uat','defects'][i]===tab));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function openGenerateModal2(){openGenerateModal();}
+function openUATModal(){document.getElementById('modal-uat').classList.add('open');}
+function openDefectModal(){document.getElementById('modal-defect').classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+init();
+</script>
+</body>
+</html>

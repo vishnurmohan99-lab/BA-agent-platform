@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Radar — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="agent.js"></script>
+<script src="nav.js"></script>
+<script src="agents/qa-agent.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:20px;margin-bottom:16px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .card-title{font-size:14px;font-weight:600}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus{border-color:#1D9E75}
+  .form-group textarea{resize:vertical;min-height:100px}
+  .risk-score-circle{width:80px;height:80px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin:0 auto 16px}
+  .score-low{background:#E1F5EE;color:#085041}
+  .score-medium{background:#FAEEDA;color:#633806}
+  .score-high{background:#FCEBEB;color:#A32D2D}
+  .score-critical{background:#E24B4A;color:#fff}
+  .score-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .conflict-item{padding:12px;border-radius:8px;margin-bottom:8px}
+  .conflict-story{background:#FCEBEB;border:1px solid #f7c1c1}
+  .conflict-rule{background:#FAEEDA;border:1px solid #f5c88a}
+  .conflict-gap{background:#E6F1FB;border:1px solid #b5d4f4}
+  .conflict-dep{background:#f0efe8;border:1px solid #e0dfd8}
+  .conflict-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .conflict-story .conflict-type{color:#A32D2D}
+  .conflict-rule .conflict-type{color:#633806}
+  .conflict-gap .conflict-type{color:#0C447C}
+  .conflict-desc{font-size:13px;color:#333;line-height:1.4}
+  .rec-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0efe8;font-size:13px;color:#333}
+  .rec-item::before{content:'→';color:#1D9E75;font-weight:700;flex-shrink:0}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .badge-high{background:#FCEBEB;color:#A32D2D}
+  .badge-medium{background:#FAEEDA;color:#633806}
+  .badge-low{background:#E1F5EE;color:#085041}
+  .badge-critical{background:#E24B4A;color:#fff}
+  .badge-open{background:#FAEEDA;color:#633806}
+  .badge-mitigated{background:#E1F5EE;color:#085041}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;border-bottom:2px solid #e8e7e0}
+  td{padding:10px 12px;border-bottom:1px solid #f0efe8;font-size:13px;color:#333;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .analysis-result{display:none}
+  .analysis-result.visible{display:block}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Risk radar</div>
+  </div>
+
+  <div class="two-col">
+    <!-- Analyse new feature -->
+    <div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="ti ti-radar" style="color:#1D9E75"></i> Analyse new feature</div></div>
+        <div class="form-group">
+          <label>Feature description *</label>
+          <textarea id="risk-feature" placeholder="Describe the feature you want to add — what it does, who it affects, what systems it touches…"></textarea>
+        </div>
+        <button class="btn btn-primary" id="btn-analyse" onclick="analyseRisk()" style="width:100%">
+          <i class="ti ti-search"></i> Analyse for risks
+        </button>
+      </div>
+
+      <!-- Analysis result -->
+      <div class="analysis-result" id="analysis-result">
+        <div class="card">
+          <div style="text-align:center;padding:8px 0 16px">
+            <div class="risk-score-circle" id="risk-score-circle">
+              <span id="risk-score-num">—</span>
+              <span class="score-label" id="risk-score-label">—</span>
+            </div>
+            <div style="font-size:13px;color:#666" id="risk-summary"></div>
+          </div>
+
+          <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Conflicts detected</div>
+          <div id="conflicts-list"></div>
+
+          <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px">Recommendations</div>
+          <div id="recommendations-list"></div>
+
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="saveToRegister()"><i class="ti ti-bookmark"></i> Save to risk register</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk register -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Risk register</div>
+          <span id="register-count" style="font-size:12px;color:#888">0 risks</span>
+        </div>
+        <table>
+          <thead><tr><th>Risk</th><th>Level</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="register-tbody"><tr><td colspan="4" style="text-align:center;color:#aaa;padding:24px">No risks logged yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let lastAnalysis = null;
+let allRisks = [];
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href = '/index.html'; return; }
+  await loadRegister();
+}
+
+async function loadRegister() {
+  allRisks = await DB.risks.list(currentProjectId);
+  renderRegister();
+}
+
+function renderRegister() {
+  const tbody = document.getElementById('register-tbody');
+  document.getElementById('register-count').textContent = `${allRisks.length} risks`;
+  tbody.innerHTML = allRisks.length
+    ? allRisks.map(r => `<tr>
+        <td>
+          <div style="font-weight:500">${r.title||'—'}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:2px">${(r.summary||'').slice(0,80)}${r.summary?.length>80?'…':''}</div>
+        </td>
+        <td><span class="badge badge-${r.risk_level||'medium'}">${r.risk_level||'—'}</span></td>
+        <td><span class="badge badge-${r.status==='mitigated'?'mitigated':'open'}">${r.status||'open'}</span></td>
+        <td>
+          ${r.status!=='mitigated'?`<button class="btn btn-sm btn-secondary" onclick="mitigateRisk('${r.id}')">Mitigate</button>`:''}
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:24px">No risks logged yet</td></tr>';
+}
+
+async function analyseRisk() {
+  const feature = document.getElementById('risk-feature').value.trim();
+  if (!feature) { alert('Please describe the feature.'); return; }
+
+  const btn = document.getElementById('btn-analyse');
+  btn.innerHTML = '<span class="spinner"></span> Analysing…'; btn.disabled = true;
+
+  try {
+    const existingStories = await DB.stories.list(currentProjectId);
+    const knowledgeDocs = await DB.knowledge.list(currentProjectId);
+    const projectConfig = await DB.agentConfig.get(currentProjectId);
+
+    lastAnalysis = await QAAgent.analyseRisk(feature, existingStories, knowledgeDocs, projectConfig);
+    renderAnalysis(lastAnalysis, feature);
+  } catch(err) {
+    alert('Analysis failed: ' + err.message);
+  } finally {
+    btn.innerHTML = '<i class="ti ti-search"></i> Analyse for risks';
+    btn.disabled = false;
+  }
+}
+
+function renderAnalysis(result, featureName) {
+  const circle = document.getElementById('risk-score-circle');
+  const scoreClasses = { low:'score-low', medium:'score-medium', high:'score-high', critical:'score-critical' };
+  circle.className = `risk-score-circle ${scoreClasses[result.risk_level] || 'score-medium'}`;
+  document.getElementById('risk-score-num').textContent = result.risk_score;
+  document.getElementById('risk-score-label').textContent = result.risk_level;
+  document.getElementById('risk-summary').textContent = result.summary;
+
+  const conflictClasses = { story_conflict:'conflict-story', rule_conflict:'conflict-rule', gap:'conflict-gap', dependency:'conflict-dep' };
+  document.getElementById('conflicts-list').innerHTML = (result.conflicts||[]).length
+    ? result.conflicts.map(c => `<div class="conflict-item ${conflictClasses[c.type]||'conflict-gap'}">
+        <div class="conflict-type">${c.type?.replace('_',' ')||'issue'} · ${c.severity||'medium'}</div>
+        <div class="conflict-desc">${c.description}</div>
+        ${c.affected_id?`<div style="font-size:11px;color:#888;margin-top:4px">Ref: ${c.affected_id}</div>`:''}
+      </div>`).join('')
+    : '<div style="font-size:13px;color:#1D9E75;padding:8px 0">No conflicts detected</div>';
+
+  document.getElementById('recommendations-list').innerHTML = (result.recommendations||[])
+    .map(r=>`<div class="rec-item">${r}</div>`).join('') || '<div style="font-size:13px;color:#aaa">No recommendations</div>';
+
+  document.getElementById('analysis-result').classList.add('visible');
+  lastAnalysis._featureName = featureName;
+}
+
+async function saveToRegister() {
+  if (!lastAnalysis) return;
+  await DB.risks.create({
+    project_id: currentProjectId,
+    title: lastAnalysis._featureName,
+    summary: lastAnalysis.summary,
+    risk_score: lastAnalysis.risk_score,
+    risk_level: lastAnalysis.risk_level,
+    conflicts: JSON.stringify(lastAnalysis.conflicts||[]),
+    recommendations: JSON.stringify(lastAnalysis.recommendations||[]),
+    status: 'open',
+  });
+  await loadRegister();
+  alert('Saved to risk register.');
+}
+
+async function mitigateRisk(id) {
+  await DB.risks.update(id, {status:'mitigated'});
+  await loadRegister();
+}
+
+init();
+</script>
+</body>
+</html>

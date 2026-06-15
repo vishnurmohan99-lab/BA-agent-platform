@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Log — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="nav.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px;max-width:860px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .toolbar{display:flex;gap:10px;margin-bottom:20px;align-items:center;flex-wrap:wrap}
+  .search-box{flex:1;min-width:200px;position:relative}
+  .search-box input{width:100%;padding:8px 12px 8px 34px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;background:#fff;outline:none}
+  .search-box i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:16px}
+  select.filter{padding:8px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;background:#fff;outline:none;color:#444}
+  .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;overflow:hidden}
+  .activity-row{display:flex;gap:14px;padding:14px 18px;border-bottom:1px solid #f0efe8;align-items:flex-start;transition:background .1s}
+  .activity-row:hover{background:#fafaf6}
+  .activity-row:last-child{border-bottom:none}
+  .activity-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+  .icon-story{background:#E1F5EE;color:#085041}
+  .icon-uat{background:#E6F1FB;color:#0C447C}
+  .icon-defect{background:#FCEBEB;color:#A32D2D}
+  .icon-risk{background:#FAEEDA;color:#633806}
+  .icon-release{background:#EEEDFE;color:#3C3489}
+  .icon-knowledge{background:#f0efe8;color:#444}
+  .icon-default{background:#f0efe8;color:#666}
+  .activity-body{flex:1}
+  .activity-desc{font-size:13px;color:#1a1a18;line-height:1.4}
+  .activity-meta{font-size:11px;color:#aaa;margin-top:4px;display:flex;gap:10px}
+  .activity-date{margin-left:auto;font-size:11px;color:#aaa;white-space:nowrap;flex-shrink:0;padding-top:2px}
+  .empty{text-align:center;color:#aaa;font-size:13px;padding:48px}
+  .date-divider{padding:8px 18px;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;background:#fafaf6;border-bottom:1px solid #f0efe8}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Activity log</div>
+    <button class="btn btn-secondary btn-sm" onclick="exportLog()"><i class="ti ti-download"></i> Export</button>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="ti ti-search"></i>
+      <input type="text" id="search" placeholder="Search activity…" oninput="filterActivity()">
+    </div>
+    <select class="filter" id="filter-type" onchange="filterActivity()">
+      <option value="">All types</option>
+      <option value="story">Stories</option>
+      <option value="uat">UAT</option>
+      <option value="defect">Defects</option>
+      <option value="risk">Risks</option>
+      <option value="release">Releases</option>
+      <option value="knowledge">Knowledge base</option>
+    </select>
+    <select class="filter" id="filter-period" onchange="filterActivity()">
+      <option value="">All time</option>
+      <option value="today">Today</option>
+      <option value="week">This week</option>
+      <option value="month">This month</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div id="activity-list"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let allActivity = [];
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href='/index.html'; return; }
+  await loadActivity();
+}
+
+async function loadActivity() {
+  allActivity = await DB.activity.list(currentProjectId, 200);
+  renderActivity(allActivity);
+}
+
+function renderActivity(items) {
+  const el = document.getElementById('activity-list');
+  if (!items.length) { el.innerHTML = '<div class="empty">No activity yet</div>'; return; }
+
+  let html = '';
+  let lastDate = '';
+  items.forEach(a => {
+    const date = new Date(a.created_at).toLocaleDateString('en-IN', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    if (date !== lastDate) {
+      html += `<div class="date-divider">${date}</div>`;
+      lastDate = date;
+    }
+    html += `<div class="activity-row">
+      <div class="activity-icon ${iconClass(a.type)}">${iconFor(a.type)}</div>
+      <div class="activity-body">
+        <div class="activity-desc">${a.description}</div>
+        <div class="activity-meta">
+          <span>${a.users?.full_name || 'System'}</span>
+          <span>${new Date(a.created_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function filterActivity() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const type = document.getElementById('filter-type').value;
+  const period = document.getElementById('filter-period').value;
+  const now = Date.now();
+  const periodMs = { today: 86400000, week: 604800000, month: 2592000000 };
+
+  const filtered = allActivity.filter(a => {
+    const matchQ = !q || a.description.toLowerCase().includes(q) || (a.users?.full_name||'').toLowerCase().includes(q);
+    const matchType = !type || a.type.startsWith(type);
+    const matchPeriod = !period || (now - new Date(a.created_at).getTime()) < (periodMs[period]||Infinity);
+    return matchQ && matchType && matchPeriod;
+  });
+  renderActivity(filtered);
+}
+
+function iconClass(type) {
+  if (type?.startsWith('story')) return 'icon-story';
+  if (type?.startsWith('uat')) return 'icon-uat';
+  if (type?.startsWith('defect')) return 'icon-defect';
+  if (type?.startsWith('risk')) return 'icon-risk';
+  if (type?.startsWith('release')) return 'icon-release';
+  if (type?.startsWith('knowledge')) return 'icon-knowledge';
+  return 'icon-default';
+}
+
+function iconFor(type) {
+  const map = { story_created:'<i class="ti ti-file-plus"></i>', story_updated:'<i class="ti ti-file-pencil"></i>', story_status:'<i class="ti ti-arrows-exchange"></i>', uat_started:'<i class="ti ti-clipboard-check"></i>', uat_signed_off:'<i class="ti ti-check"></i>', defect_raised:'<i class="ti ti-bug"></i>', risk_created:'<i class="ti ti-alert-triangle"></i>', release_created:'<i class="ti ti-rocket"></i>', knowledge_added:'<i class="ti ti-books"></i>' };
+  return map[type] || '<i class="ti ti-activity"></i>';
+}
+
+function exportLog() {
+  const rows = [['Time','User','Type','Description']];
+  allActivity.forEach(a => rows.push([new Date(a.created_at).toISOString(), a.users?.full_name||'System', a.type, a.description]));
+  const csv = rows.map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const link = document.createElement('a');
+  link.href = 'data:text/csv,' + encodeURIComponent(csv);
+  link.download = 'activity-log.csv';
+  link.click();
+}
+
+init();
+</script>
+</body>
+</html>

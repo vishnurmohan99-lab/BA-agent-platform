@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Stories — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="agent.js"></script>
+<script src="nav.js"></script>
+<script src="agents/ba-agent.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f0; color: #1a1a18; }
+  .page { padding: 28px 32px; }
+  .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .page-title { font-size: 20px; font-weight: 600; flex: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: #1D9E75; color: #fff; }
+  .btn-primary:hover { background: #0F6E56; }
+  .btn-secondary { background: #fff; color: #444; border: 1px solid #e0dfd8; }
+  .btn-secondary:hover { background: #f0f0eb; }
+  .btn-danger { background: #fff; color: #A32D2D; border: 1px solid #f0c0c0; }
+  .btn-danger:hover { background: #FCEBEB; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .search-box { flex: 1; min-width: 200px; position: relative; }
+  .search-box input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; background: #fff; outline: none; }
+  .search-box i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 16px; }
+  select.filter { padding: 8px 12px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; background: #fff; outline: none; color: #444; cursor: pointer; }
+  .pipeline { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+  .pipeline-col { flex: 1; min-width: 260px; }
+  .pipeline-col-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 8px 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .col-draft .pipeline-col-header { background: #f0efe8; color: #666; }
+  .col-review .pipeline-col-header { background: #E6F1FB; color: #0C447C; }
+  .col-approved .pipeline-col-header { background: #E1F5EE; color: #085041; }
+  .col-deprecated .pipeline-col-header { background: #f5e8e8; color: #7a3333; }
+  .pipeline-col-body { background: rgba(0,0,0,0.02); border: 1px solid #e8e7e0; border-top: none; border-radius: 0 0 8px 8px; padding: 10px; min-height: 200px; }
+  .story-card { background: #fff; border: 1px solid #e8e7e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; cursor: pointer; transition: all .15s; }
+  .story-card:hover { border-color: #1D9E75; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .story-card.selected { border-color: #1D9E75; background: #f0fbf7; }
+  .story-id { font-size: 10px; font-weight: 700; color: #888; letter-spacing: .06em; margin-bottom: 4px; }
+  .story-title { font-size: 13px; font-weight: 500; color: #1a1a18; line-height: 1.4; margin-bottom: 8px; }
+  .story-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+  .badge-high { background: #FCEBEB; color: #A32D2D; }
+  .badge-medium { background: #FAEEDA; color: #633806; }
+  .badge-low { background: #E1F5EE; color: #085041; }
+  .story-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .bulk-bar { display: none; background: #1D9E75; color: #fff; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; }
+  .bulk-bar.visible { display: flex; }
+  .panel { position: fixed; right: 0; top: 0; bottom: 0; width: 540px; background: #fff; border-left: 1px solid #e8e7e0; z-index: 150; display: none; flex-direction: column; overflow: hidden; }
+  .panel.open { display: flex; }
+  .panel-header { padding: 20px 24px; border-bottom: 1px solid #e8e7e0; display: flex; align-items: center; gap: 12px; }
+  .panel-title { font-size: 15px; font-weight: 600; flex: 1; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .panel-footer { padding: 16px 24px; border-top: 1px solid #e8e7e0; display: flex; gap: 10px; flex-wrap: wrap; }
+  .generate-form { background: #fff; border: 1px solid #e8e7e0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .generate-form h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .form-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin-bottom: 12px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: #666; margin-bottom: 5px; }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #1D9E75; }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .section-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; margin-top: 16px; }
+  .ac-list { list-style: none; }
+  .ac-list li { font-size: 13px; color: #333; padding: 6px 0; border-bottom: 1px solid #f0efe8; line-height: 1.5; }
+  .ac-list li::before { content: '✓ '; color: #1D9E75; font-weight: 700; }
+  .edge-list li::before { content: '⚠ '; color: #BA7517; }
+  .review-block { border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .review-pass { background: #E1F5EE; }
+  .review-warn { background: #FAEEDA; }
+  .review-fail { background: #FCEBEB; }
+  .review-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .review-pass .review-label { color: #085041; }
+  .review-warn .review-label { color: #633806; }
+  .review-fail .review-label { color: #A32D2D; }
+  .review-note { font-size: 12px; margin-top: 4px; color: #444; }
+  .version-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0efe8; font-size: 12px; color: #666; }
+  .comment-item { padding: 10px 0; border-bottom: 1px solid #f0efe8; }
+  .comment-author { font-size: 12px; font-weight: 500; color: #333; }
+  .comment-text { font-size: 13px; color: #444; margin-top: 3px; }
+  .comment-time { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .comment-input { display: flex; gap: 8px; margin-top: 12px; }
+  .comment-input input { flex: 1; padding: 8px 12px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; outline: none; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-col { text-align: center; padding: 24px; color: #aaa; font-size: 12px; }
+  .regenerate-box { background: #f8f8f4; border: 1px solid #e8e7e0; border-radius: 8px; padding: 14px; margin-top: 16px; }
+  .regenerate-box label { font-size: 12px; font-weight: 500; color: #666; display: block; margin-bottom: 6px; }
+  .regenerate-box textarea { width: 100%; padding: 8px 10px; border: 1px solid #e0dfd8; border-radius: 6px; font-size: 12px; resize: vertical; min-height: 60px; outline: none; font-family: inherit; }
+  .tab-bar { display: flex; gap: 0; border-bottom: 1px solid #e8e7e0; margin-bottom: 16px; }
+  .tab { padding: 8px 16px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: #1D9E75; border-bottom-color: #1D9E75; font-weight: 500; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">User stories</div>
+    <button class="btn btn-secondary btn-sm" onclick="exportCSV()"><i class="ti ti-download"></i> Export CSV</button>
+    <button class="btn btn-primary" onclick="openGeneratePanel()"><i class="ti ti-sparkles"></i> Generate stories</button>
+  </div>
+
+  <!-- Generate form -->
+  <div class="generate-form" id="generate-form" style="display:none">
+    <h3><i class="ti ti-sparkles" style="color:#1D9E75"></i> Generate new stories</h3>
+    <div class="form-group">
+      <label>Feature name *</label>
+      <input type="text" id="gen-feature" placeholder="e.g. Ride Receipt">
+    </div>
+    <div class="form-group">
+      <label>Feature description *</label>
+      <textarea id="gen-desc" placeholder="Describe what this feature does and who it's for…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>Number of stories</label>
+        <select id="gen-count"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+      </div>
+      <div style="align-self:flex-end;display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeGeneratePanel()">Cancel</button>
+        <button class="btn btn-primary" id="btn-generate" onclick="generateStories()"><i class="ti ti-sparkles"></i> Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk action bar -->
+  <div class="bulk-bar" id="bulk-bar">
+    <span id="bulk-count">0 selected</span>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:none" onclick="bulkApprove()">Approve all</button>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:none" onclick="bulkDeprecate()">Deprecate all</button>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:none" onclick="clearSelection()">✕ Clear</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="ti ti-search"></i>
+      <input type="text" id="search-input" placeholder="Search stories…" oninput="filterStories()">
+    </div>
+    <select class="filter" id="filter-status" onchange="filterStories()">
+      <option value="">All statuses</option>
+      <option value="draft">Draft</option>
+      <option value="in_review">In review</option>
+      <option value="approved">Approved</option>
+      <option value="deprecated">Deprecated</option>
+    </select>
+    <select class="filter" id="filter-priority" onchange="filterStories()">
+      <option value="">All priorities</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+  </div>
+
+  <!-- Pipeline columns -->
+  <div class="pipeline">
+    <div class="pipeline-col col-draft">
+      <div class="pipeline-col-header">Draft <span id="count-draft">0</span></div>
+      <div class="pipeline-col-body" id="col-draft"></div>
+    </div>
+    <div class="pipeline-col col-review">
+      <div class="pipeline-col-header">In review <span id="count-review">0</span></div>
+      <div class="pipeline-col-body" id="col-review"></div>
+    </div>
+    <div class="pipeline-col col-approved">
+      <div class="pipeline-col-header">Approved <span id="count-approved">0</span></div>
+      <div class="pipeline-col-body" id="col-approved"></div>
+    </div>
+    <div class="pipeline-col col-deprecated">
+      <div class="pipeline-col-header">Deprecated <span id="count-deprecated">0</span></div>
+      <div class="pipeline-col-body" id="col-deprecated"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Story detail panel -->
+<div class="panel" id="story-panel">
+  <div class="panel-header">
+    <div>
+      <div style="font-size:11px;color:#888;font-weight:700;letter-spacing:.06em" id="panel-story-id"></div>
+      <div class="panel-title" id="panel-story-title"></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="closePanel()"><i class="ti ti-x"></i></button>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('details')">Details</div>
+    <div class="tab" onclick="switchTab('comments')">Comments</div>
+    <div class="tab" onclick="switchTab('history')">Version history</div>
+  </div>
+
+  <div class="panel-body">
+    <div class="tab-content active" id="tab-details">
+      <div class="section-label">User story</div>
+      <p id="panel-story-text" style="font-size:14px;color:#333;line-height:1.6;font-style:italic"></p>
+
+      <div class="section-label">Acceptance criteria</div>
+      <ul class="ac-list" id="panel-ac"></ul>
+
+      <div class="section-label">Edge cases</div>
+      <ul class="ac-list edge-list" id="panel-edge"></ul>
+
+      <div id="panel-rules-wrap">
+        <div class="section-label">Business rules referenced</div>
+        <div id="panel-rules" style="font-size:13px;color:#666"></div>
+      </div>
+
+      <div class="regenerate-box" id="regen-box" style="display:none">
+        <label>Feedback for AI (what to improve)</label>
+        <textarea id="regen-feedback" placeholder="e.g. Add an edge case for offline mode, make acceptance criteria more specific…"></textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="regenerateStory()"><i class="ti ti-sparkles"></i> Regenerate with feedback</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-comments">
+      <div id="comments-list"></div>
+      <div class="comment-input">
+        <input type="text" id="comment-input" placeholder="Add a comment…">
+        <button class="btn btn-primary btn-sm" onclick="addComment()">Post</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-history">
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <div class="panel-footer" id="panel-footer"></div>
+</div>
+
+<script>
+let allStories = [];
+let selectedIds = new Set();
+let currentStory = null;
+let currentProjectId = null;
+let projectConfig = null;
+let knowledgeDocs = [];
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { alert('Please select a project first.'); window.location.href = '/index.html'; return; }
+  projectConfig = await DB.agentConfig.get(currentProjectId);
+  const project = await DB.projects.get(currentProjectId);
+  if (project) document.querySelector('.page-title').textContent = `User stories — ${project.name}`;
+  knowledgeDocs = await DB.knowledge.list(currentProjectId);
+  await loadStories();
+}
+
+async function loadStories() {
+  allStories = await DB.stories.list(currentProjectId);
+  renderPipeline(allStories);
+}
+
+function renderPipeline(stories) {
+  const cols = { draft: [], in_review: [], approved: [], deprecated: [] };
+  stories.forEach(s => { if (cols[s.status]) cols[s.status].push(s); });
+
+  Object.entries(cols).forEach(([status, list]) => {
+    const colId = status === 'in_review' ? 'col-review' : `col-${status}`;
+    const countId = status === 'in_review' ? 'count-review' : `count-${status}`;
+    document.getElementById(countId).textContent = list.length;
+    document.getElementById(colId).innerHTML = list.length
+      ? list.map(s => storyCard(s)).join('')
+      : `<div class="empty-col">No stories</div>`;
+  });
+}
+
+function storyCard(s) {
+  const sel = selectedIds.has(s.id);
+  return `<div class="story-card ${sel ? 'selected' : ''}" id="card-${s.id}">
+    <div style="display:flex;align-items:flex-start;gap:8px">
+      <input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSelect('${s.id}',event)" style="margin-top:2px;flex-shrink:0">
+      <div style="flex:1" onclick="openStory('${s.id}')">
+        <div class="story-id">${s.story_id || '—'}</div>
+        <div class="story-title">${s.title}</div>
+        <div class="story-meta">
+          <span class="badge badge-${s.priority || 'medium'}">${s.priority || 'medium'}</span>
+          <span style="font-size:11px;color:#aaa">v${s.version || 1}</span>
+        </div>
+      </div>
+    </div>
+    <div class="story-actions">
+      ${s.status === 'draft' ? `<button class="btn btn-sm btn-secondary" onclick="moveStatus('${s.id}','in_review',event)">Submit for review</button>` : ''}
+      ${s.status === 'in_review' ? `<button class="btn btn-sm btn-primary" onclick="moveStatus('${s.id}','approved',event)">Approve</button>` : ''}
+      ${s.status !== 'deprecated' ? `<button class="btn btn-sm btn-danger" onclick="moveStatus('${s.id}','deprecated',event)">Deprecate</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function openStory(id) {
+  currentStory = await DB.stories.get(id);
+  if (!currentStory) return;
+  const s = currentStory;
+  document.getElementById('panel-story-id').textContent = s.story_id || s.id.slice(0,8);
+  document.getElementById('panel-story-title').textContent = s.title;
+  document.getElementById('panel-story-text').textContent = s.story_text || '—';
+
+  const ac = tryParseArray(s.acceptance_criteria);
+  document.getElementById('panel-ac').innerHTML = ac.map(c => `<li>${c}</li>`).join('') || '<li>No criteria</li>';
+
+  const edge = tryParseArray(s.edge_cases);
+  document.getElementById('panel-edge').innerHTML = edge.map(e => `<li>${e}</li>`).join('') || '<li>None specified</li>';
+
+  const rules = tryParseArray(s.business_rules_referenced);
+  document.getElementById('panel-rules').textContent = rules.join(', ') || 'None';
+
+  const canEdit = Nav.can('edit');
+  document.getElementById('regen-box').style.display = canEdit ? 'block' : 'none';
+
+  renderPanelFooter(s);
+  loadComments(id);
+  loadHistory(s);
+  switchTab('details');
+  document.getElementById('story-panel').classList.add('open');
+}
+
+function renderPanelFooter(s) {
+  const canApprove = Nav.can('approve');
+  const canEdit = Nav.can('edit');
+  let btns = '';
+  if (canEdit && s.status === 'draft') btns += `<button class="btn btn-secondary btn-sm" onclick="moveStatus('${s.id}','in_review')">Submit for review</button>`;
+  if (canApprove && s.status === 'in_review') btns += `<button class="btn btn-primary btn-sm" onclick="moveStatus('${s.id}','approved')">Approve</button>`;
+  if (canEdit && s.status !== 'deprecated') btns += `<button class="btn btn-danger btn-sm" onclick="moveStatus('${s.id}','deprecated')">Deprecate</button>`;
+  btns += `<button class="btn btn-secondary btn-sm" onclick="exportSinglePDF()"><i class="ti ti-download"></i> Export</button>`;
+  document.getElementById('panel-footer').innerHTML = btns;
+}
+
+function closePanel() {
+  document.getElementById('story-panel').classList.remove('open');
+  currentStory = null;
+}
+
+async function loadComments(storyId) {
+  const comments = await DB.comments.list(storyId);
+  document.getElementById('comments-list').innerHTML = comments.length
+    ? comments.map(c => `<div class="comment-item"><div class="comment-author">${c.users?.full_name || 'User'}</div><div class="comment-text">${c.text}</div><div class="comment-time">${new Date(c.created_at).toLocaleString()}</div></div>`).join('')
+    : '<div style="font-size:13px;color:#aaa;padding:16px 0">No comments yet</div>';
+}
+
+async function addComment() {
+  const input = document.getElementById('comment-input');
+  const text = input.value.trim();
+  if (!text || !currentStory) return;
+  input.value = '';
+  await DB.comments.add(currentStory.id, text);
+  loadComments(currentStory.id);
+}
+
+function loadHistory(story) {
+  const versions = story.story_versions || [];
+  document.getElementById('history-list').innerHTML = versions.length
+    ? versions.map(v => `<div class="version-item"><div><div style="font-weight:500;color:#333">Version ${v.version}</div><div>${new Date(v.created_at).toLocaleString()}</div></div></div>`).join('')
+    : '<div style="font-size:13px;color:#aaa;padding:16px 0">No previous versions</div>';
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['details','comments','history'][i] === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+async function moveStatus(id, status, e) {
+  if (e) e.stopPropagation();
+  await DB.stories.updateStatus(id, status);
+  await loadStories();
+  if (currentStory?.id === id) {
+    currentStory.status = status;
+    renderPanelFooter(currentStory);
+  }
+}
+
+function toggleSelect(id, e) {
+  e.stopPropagation();
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  updateBulkBar();
+  document.getElementById(`card-${id}`)?.classList.toggle('selected', selectedIds.has(id));
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  bar.classList.toggle('visible', selectedIds.size > 0);
+  document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
+}
+
+function clearSelection() { selectedIds.clear(); updateBulkBar(); renderPipeline(allStories); }
+
+async function bulkApprove() {
+  if (!selectedIds.size) return;
+  await DB.stories.bulkUpdateStatus([...selectedIds], 'approved');
+  clearSelection(); await loadStories();
+}
+async function bulkDeprecate() {
+  if (!selectedIds.size) return;
+  await DB.stories.bulkUpdateStatus([...selectedIds], 'deprecated');
+  clearSelection(); await loadStories();
+}
+
+function filterStories() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const status = document.getElementById('filter-status').value;
+  const priority = document.getElementById('filter-priority').value;
+  const filtered = allStories.filter(s =>
+    (!q || s.title.toLowerCase().includes(q) || (s.story_id || '').toLowerCase().includes(q)) &&
+    (!status || s.status === status) &&
+    (!priority || s.priority === priority)
+  );
+  renderPipeline(filtered);
+}
+
+function openGeneratePanel() {
+  document.getElementById('generate-form').style.display = 'block';
+}
+function closeGeneratePanel() {
+  document.getElementById('generate-form').style.display = 'none';
+}
+
+async function generateStories() {
+  const feature = document.getElementById('gen-feature').value.trim();
+  const desc = document.getElementById('gen-desc').value.trim();
+  const count = parseInt(document.getElementById('gen-count').value);
+  if (!feature || !desc) { alert('Please fill in feature name and description.'); return; }
+
+  const btn = document.getElementById('btn-generate');
+  btn.innerHTML = '<span class="spinner"></span> Generating…';
+  btn.disabled = true;
+
+  try {
+    const featureText = `Feature: ${feature}\n\n${desc}`;
+    const stories = await BAAgent.generate(featureText, count, projectConfig, knowledgeDocs);
+    const review = await BAAgent.review(stories, projectConfig, knowledgeDocs);
+
+    for (const s of stories) {
+      await DB.stories.create({
+        project_id: currentProjectId,
+        story_id: s.story_id,
+        title: s.title,
+        feature_name: feature,
+        story_text: s.story_text,
+        acceptance_criteria: JSON.stringify(s.acceptance_criteria),
+        edge_cases: JSON.stringify(s.edge_cases),
+        business_rules_referenced: JSON.stringify(s.business_rules_referenced || []),
+        priority: s.priority || 'medium',
+        status: 'draft',
+        version: 1,
+        reviewer_output: JSON.stringify(review),
+      });
+    }
+    closeGeneratePanel();
+    await loadStories();
+  } catch (err) {
+    alert('Generation failed: ' + err.message);
+  } finally {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate';
+    btn.disabled = false;
+  }
+}
+
+async function regenerateStory() {
+  if (!currentStory) return;
+  const feedback = document.getElementById('regen-feedback').value.trim();
+  if (!feedback) { alert('Please describe what to improve.'); return; }
+
+  const btn = document.querySelector('#regen-box button');
+  btn.textContent = 'Regenerating…'; btn.disabled = true;
+
+  try {
+    const improved = await BAAgent.regenerate([currentStory], feedback, projectConfig, knowledgeDocs);
+    const s = improved[0];
+    await DB.stories.update(currentStory.id, {
+      title: s.title,
+      story_text: s.story_text,
+      acceptance_criteria: JSON.stringify(s.acceptance_criteria),
+      edge_cases: JSON.stringify(s.edge_cases),
+    });
+    document.getElementById('regen-feedback').value = '';
+    await loadStories();
+    openStory(currentStory.id);
+  } catch (err) {
+    alert('Regeneration failed: ' + err.message);
+  } finally {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Regenerate with feedback';
+    btn.disabled = false;
+  }
+}
+
+function exportCSV() {
+  const rows = [['ID','Title','Story','Status','Priority','Version']];
+  allStories.forEach(s => rows.push([s.story_id||'', s.title, s.story_text||'', s.status, s.priority||'', s.version||1]));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = 'stories.csv';
+  a.click();
+}
+
+function exportSinglePDF() {
+  if (!currentStory) return;
+  const s = currentStory;
+  const content = `USER STORY\n\n${s.story_id || ''} — ${s.title}\n\n${s.story_text || ''}\n\nAcceptance Criteria:\n${tryParseArray(s.acceptance_criteria).map((c,i)=>`${i+1}. ${c}`).join('\n')}\n\nEdge Cases:\n${tryParseArray(s.edge_cases).join('\n')}`;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain,' + encodeURIComponent(content);
+  a.download = `${s.story_id || 'story'}.txt`;
+  a.click();
+}
+
+function tryParseArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return [String(val)]; }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Never commit real credentials
+config.js
+
+# Keep the template
+!config.example.js
+
+node_modules/
+.env
+.DS_Store

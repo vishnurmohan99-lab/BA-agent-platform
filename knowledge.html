@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Base — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="nav.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-danger{background:#fff;color:#A32D2D;border:1px solid #f0c0c0}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .two-col{display:grid;grid-template-columns:1fr 1.6fr;gap:20px}
+  .card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:20px}
+  .search-box{position:relative;margin-bottom:16px}
+  .search-box input{width:100%;padding:9px 12px 9px 36px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;background:#fff;outline:none}
+  .search-box input:focus{border-color:#1D9E75}
+  .search-box i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:16px}
+  .doc-item{padding:12px;border:1px solid #e8e7e0;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+  .doc-item:hover{border-color:#1D9E75}
+  .doc-item.active{border-color:#1D9E75;background:#f0fbf7}
+  .doc-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .doc-type-business_rule{color:#633806}
+  .doc-type-brd{color:#0C447C}
+  .doc-type-meeting_note{color:#3C3489}
+  .doc-type-user_story{color:#085041}
+  .doc-type-decision{color:#712B13}
+  .doc-title{font-size:13px;font-weight:500;color:#1a1a18}
+  .doc-preview{font-size:12px;color:#888;margin-top:3px;line-height:1.4}
+  .doc-date{font-size:11px;color:#aaa;margin-top:4px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#1D9E75}
+  .form-group textarea{resize:vertical;min-height:200px}
+  .detail-view{display:none}
+  .detail-view.visible{display:block}
+  .add-form{display:none}
+  .add-form.visible{display:block}
+  .doc-content{font-size:13px;color:#333;line-height:1.7;white-space:pre-wrap;background:#f8f8f4;border-radius:8px;padding:16px;max-height:400px;overflow-y:auto}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .empty{text-align:center;color:#aaa;font-size:13px;padding:32px}
+  .type-filter{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .type-pill{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #e0dfd8;background:#fff;color:#666;transition:all .15s}
+  .type-pill.active{background:#1D9E75;color:#fff;border-color:#1D9E75}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Knowledge base</div>
+    <button class="btn btn-primary" onclick="showAddForm()"><i class="ti ti-plus"></i> Add document</button>
+  </div>
+
+  <div class="two-col">
+    <!-- Left: document list -->
+    <div>
+      <div class="search-box">
+        <i class="ti ti-search"></i>
+        <input type="text" id="kb-search" placeholder="Search knowledge base…" oninput="searchDocs()">
+      </div>
+      <div class="type-filter">
+        <div class="type-pill active" onclick="filterType('',this)">All</div>
+        <div class="type-pill" onclick="filterType('business_rule',this)">Business rules</div>
+        <div class="type-pill" onclick="filterType('brd',this)">BRDs</div>
+        <div class="type-pill" onclick="filterType('meeting_note',this)">Meeting notes</div>
+        <div class="type-pill" onclick="filterType('decision',this)">Decisions</div>
+      </div>
+      <div id="docs-list"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- Right: detail / add form -->
+    <div>
+      <!-- Add form -->
+      <div class="card add-form" id="add-form">
+        <div style="font-size:15px;font-weight:600;margin-bottom:18px">Add document</div>
+        <div class="form-group">
+          <label>Document type *</label>
+          <select id="doc-type">
+            <option value="business_rule">Business rule</option>
+            <option value="brd">BRD</option>
+            <option value="meeting_note">Meeting note</option>
+            <option value="decision">Decision</option>
+            <option value="user_story">User story</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" id="doc-title" placeholder="e.g. BR-PRIV-004 — Driver address privacy rule">
+        </div>
+        <div class="form-group">
+          <label>Content *</label>
+          <textarea id="doc-content" placeholder="Paste the full content of the document here. The AI will use this as context when generating stories, tests, and risk analysis."></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="hideAddForm()">Cancel</button>
+          <button class="btn btn-primary" onclick="addDocument()"><i class="ti ti-device-floppy"></i> Save to knowledge base</button>
+        </div>
+      </div>
+
+      <!-- Document detail -->
+      <div class="card detail-view" id="detail-view">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div class="doc-type" id="detail-type"></div>
+            <div style="font-size:16px;font-weight:600;color:#1a1a18" id="detail-title"></div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px" id="detail-date"></div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteDocument()"><i class="ti ti-trash"></i> Delete</button>
+        </div>
+        <div class="doc-content" id="detail-content"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="right-empty" class="empty" style="padding:60px">Select a document to preview</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProjectId = null;
+let allDocs = [];
+let filteredDocs = [];
+let activeType = '';
+let selectedDoc = null;
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href='/index.html'; return; }
+  await loadDocs();
+}
+
+async function loadDocs() {
+  allDocs = await DB.knowledge.list(currentProjectId);
+  filteredDocs = allDocs;
+  renderDocs();
+}
+
+function renderDocs() {
+  const el = document.getElementById('docs-list');
+  const docs = filteredDocs;
+  el.innerHTML = docs.length
+    ? docs.map(d => `
+      <div class="doc-item ${selectedDoc?.id===d.id?'active':''}" onclick="selectDoc(${JSON.stringify(d).replace(/"/g,'&quot;')})">
+        <div class="doc-type doc-type-${d.doc_type||'document'}">${(d.doc_type||'document').replace('_',' ')}</div>
+        <div class="doc-title">${d.title}</div>
+        <div class="doc-preview">${(d.content||'').slice(0,100)}${d.content?.length>100?'…':''}</div>
+        <div class="doc-date">${new Date(d.created_at).toLocaleDateString()}</div>
+      </div>`).join('')
+    : '<div class="empty">No documents yet. Add your business rules, BRDs, and decisions.</div>';
+}
+
+function selectDoc(doc) {
+  selectedDoc = doc;
+  document.getElementById('add-form').classList.remove('visible');
+  document.getElementById('detail-view').classList.add('visible');
+  document.getElementById('right-empty').style.display = 'none';
+  document.getElementById('detail-type').textContent = (doc.doc_type||'').replace('_',' ');
+  document.getElementById('detail-type').className = `doc-type doc-type-${doc.doc_type||'document'}`;
+  document.getElementById('detail-title').textContent = doc.title;
+  document.getElementById('detail-date').textContent = 'Added ' + new Date(doc.created_at).toLocaleDateString();
+  document.getElementById('detail-content').textContent = doc.content || '—';
+  renderDocs();
+}
+
+async function addDocument() {
+  const title = document.getElementById('doc-title').value.trim();
+  const content = document.getElementById('doc-content').value.trim();
+  if (!title || !content) { alert('Title and content are required.'); return; }
+  const btn = document.querySelector('#add-form .btn-primary');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    await DB.knowledge.add({ project_id: currentProjectId, doc_type: document.getElementById('doc-type').value, title, content });
+    document.getElementById('doc-title').value = '';
+    document.getElementById('doc-content').value = '';
+    hideAddForm();
+    await loadDocs();
+  } catch(err) { alert('Failed to save: ' + err.message); }
+  finally { btn.innerHTML = '<i class="ti ti-device-floppy"></i> Save to knowledge base'; btn.disabled = false; }
+}
+
+async function deleteDocument() {
+  if (!selectedDoc || !confirm('Delete this document?')) return;
+  await DB.knowledge.delete(selectedDoc.id);
+  selectedDoc = null;
+  document.getElementById('detail-view').classList.remove('visible');
+  document.getElementById('right-empty').style.display = 'block';
+  await loadDocs();
+}
+
+function searchDocs() {
+  const q = document.getElementById('kb-search').value.toLowerCase();
+  filteredDocs = allDocs.filter(d =>
+    (!activeType || d.doc_type === activeType) &&
+    (d.title.toLowerCase().includes(q) || (d.content||'').toLowerCase().includes(q))
+  );
+  renderDocs();
+}
+
+function filterType(type, el) {
+  activeType = type;
+  document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  filteredDocs = type ? allDocs.filter(d=>d.doc_type===type) : allDocs;
+  renderDocs();
+}
+
+function showAddForm() {
+  document.getElementById('add-form').classList.add('visible');
+  document.getElementById('detail-view').classList.remove('visible');
+  document.getElementById('right-empty').style.display = 'none';
+}
+function hideAddForm() {
+  document.getElementById('add-form').classList.remove('visible');
+  document.getElementById('right-empty').style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

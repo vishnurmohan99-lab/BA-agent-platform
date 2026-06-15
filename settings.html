@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="nav.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px;max-width:860px}
+  .page-title{font-size:20px;font-weight:600;margin-bottom:24px}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-danger{background:#fff;color:#A32D2D;border:1px solid #f0c0c0}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .section{background:#fff;border:1px solid #e8e7e0;border-radius:12px;padding:22px;margin-bottom:20px}
+  .section-title{font-size:15px;font-weight:600;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #f0efe8}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#1D9E75}
+  .form-group textarea{resize:vertical;min-height:120px}
+  .form-group .hint{font-size:11px;color:#aaa;margin-top:4px}
+  .save-row{display:flex;justify-content:flex-end;margin-top:4px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;border-bottom:2px solid #e8e7e0}
+  td{padding:10px 12px;border-bottom:1px solid #f0efe8;font-size:13px;color:#333;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+  .badge-admin{background:#EEEDFE;color:#3C3489}
+  .badge-approver{background:#E1F5EE;color:#085041}
+  .badge-editor{background:#E6F1FB;color:#0C447C}
+  .badge-viewer{background:#f0efe8;color:#666}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:440px}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:18px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-title">Settings</div>
+
+  <!-- Project details -->
+  <div class="section">
+    <div class="section-title">Project details</div>
+    <div class="form-row">
+      <div class="form-group"><label>Project name *</label><input type="text" id="s-name" placeholder="Project name"></div>
+      <div class="form-group"><label>Story ID prefix</label><input type="text" id="s-prefix" placeholder="e.g. TUX" maxlength="6"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Industry / domain</label><input type="text" id="s-industry" placeholder="e.g. ride-hailing, fintech"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="s-status"><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="s-desc" style="min-height:70px" placeholder="What does this project do?"></textarea></div>
+    <div class="save-row"><button class="btn btn-primary" onclick="saveProject()"><i class="ti ti-device-floppy"></i> Save project</button></div>
+  </div>
+
+  <!-- AI agent configuration -->
+  <div class="section">
+    <div class="section-title">AI agent configuration</div>
+    <p style="font-size:13px;color:#666;margin-bottom:16px">This context is injected into every AI agent call for this project. The more specific you are, the better the AI output.</p>
+    <div class="form-group">
+      <label>User types (who uses your product)</label>
+      <input type="text" id="a-users" placeholder="e.g. passenger, driver, admin, support agent">
+      <div class="hint">Comma-separated. The AI will use these as roles in user stories.</div>
+    </div>
+    <div class="form-group">
+      <label>Acceptance criteria format</label>
+      <select id="a-format">
+        <option value="Given/When/Then">Given / When / Then</option>
+        <option value="bullet">Bullet points</option>
+        <option value="numbered">Numbered list</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Custom rules for the AI</label>
+      <textarea id="a-rules" placeholder="e.g. Always reference business rule IDs. Never expose driver home address. All monetary values in INR. Stories must include an offline edge case."></textarea>
+      <div class="hint">These rules are prepended to every agent prompt. Be specific.</div>
+    </div>
+    <div class="form-group">
+      <label>BA agent system prompt (advanced — optional override)</label>
+      <textarea id="a-ba-prompt" style="min-height:150px" placeholder="Leave blank to use the default BA agent prompt. Only fill this if you want to fully customise how stories are written."></textarea>
+    </div>
+    <div class="save-row"><button class="btn btn-primary" onclick="saveAgentConfig()"><i class="ti ti-device-floppy"></i> Save agent config</button></div>
+  </div>
+
+  <!-- Team members -->
+  <div class="section">
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      Team members
+      <button class="btn btn-secondary btn-sm" onclick="openAddMember()"><i class="ti ti-user-plus"></i> Add member</button>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+      <tbody id="team-tbody"><tr><td colspan="4" style="text-align:center;color:#aaa;padding:24px">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="section" style="border-color:#f0c0c0">
+    <div class="section-title" style="color:#A32D2D">Danger zone</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:500">Delete this project</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">Permanently delete all stories, tests, and knowledge base documents.</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteProject()"><i class="ti ti-trash"></i> Delete project</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add member modal -->
+<div class="modal-overlay" id="modal-member">
+  <div class="modal">
+    <h3>Add team member</h3>
+    <div class="form-group"><label>Select user</label><select id="m-user" style="width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none"></select></div>
+    <div class="form-group"><label>Role</label>
+      <select id="m-role" style="width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none">
+        <option value="viewer">Viewer — read only</option>
+        <option value="editor">Editor — create and edit</option>
+        <option value="approver">Approver — can approve stories</option>
+        <option value="admin">Admin — full access</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addMember()">Add member</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentProjectId = null;
+let currentProject = null;
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href='/index.html'; return; }
+  currentProject = await DB.projects.get(currentProjectId);
+  if (currentProject) fillProjectForm(currentProject);
+  const agentCfg = await DB.agentConfig.get(currentProjectId);
+  if (agentCfg) fillAgentForm(agentCfg);
+  await loadTeam();
+}
+
+function fillProjectForm(p) {
+  document.getElementById('s-name').value = p.name || '';
+  document.getElementById('s-prefix').value = p.story_prefix || '';
+  document.getElementById('s-industry').value = p.industry || '';
+  document.getElementById('s-status').value = p.status || 'active';
+  document.getElementById('s-desc').value = p.description || '';
+}
+
+function fillAgentForm(cfg) {
+  document.getElementById('a-users').value = cfg.user_types || '';
+  document.getElementById('a-format').value = cfg.ac_format || 'Given/When/Then';
+  document.getElementById('a-rules').value = cfg.custom_rules || '';
+  document.getElementById('a-ba-prompt').value = cfg.ba_prompt_override || '';
+}
+
+async function saveProject() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { alert('Project name required.'); return; }
+  await DB.projects.update(currentProjectId, {
+    name,
+    story_prefix: document.getElementById('s-prefix').value.trim().toUpperCase(),
+    industry: document.getElementById('s-industry').value.trim(),
+    status: document.getElementById('s-status').value,
+    description: document.getElementById('s-desc').value.trim(),
+  });
+  showToast('Project saved');
+}
+
+async function saveAgentConfig() {
+  await DB.agentConfig.save(currentProjectId, {
+    project_name: currentProject?.name,
+    user_types: document.getElementById('a-users').value.trim(),
+    ac_format: document.getElementById('a-format').value,
+    custom_rules: document.getElementById('a-rules').value.trim(),
+    ba_prompt_override: document.getElementById('a-ba-prompt').value.trim(),
+    story_prefix: document.getElementById('s-prefix').value.trim().toUpperCase() || 'STORY',
+    industry: document.getElementById('s-industry').value.trim(),
+  });
+  showToast('Agent config saved');
+}
+
+async function loadTeam() {
+  const members = await DB.team.list(currentProjectId);
+  const tbody = document.getElementById('team-tbody');
+  tbody.innerHTML = members.length
+    ? members.map(m=>`<tr>
+        <td style="font-weight:500">${m.users?.full_name||'—'}</td>
+        <td style="color:#888">${m.users?.email||'—'}</td>
+        <td><span class="badge badge-${m.role}">${m.role}</span></td>
+        <td>
+          <select onchange="changeRole('${m.user_id}',this.value)" style="padding:4px 8px;border:1px solid #e0dfd8;border-radius:6px;font-size:12px;outline:none;margin-right:6px">
+            <option value="viewer" ${m.role==='viewer'?'selected':''}>Viewer</option>
+            <option value="editor" ${m.role==='editor'?'selected':''}>Editor</option>
+            <option value="approver" ${m.role==='approver'?'selected':''}>Approver</option>
+            <option value="admin" ${m.role==='admin'?'selected':''}>Admin</option>
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="removeMember('${m.user_id}')">Remove</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px">No team members yet</td></tr>';
+}
+
+async function openAddMember() {
+  const users = await DB.team.listAllUsers();
+  const sel = document.getElementById('m-user');
+  sel.innerHTML = users.map(u=>`<option value="${u.id}">${u.full_name||u.email} (${u.email})</option>`).join('');
+  document.getElementById('modal-member').classList.add('open');
+}
+
+async function addMember() {
+  const userId = document.getElementById('m-user').value;
+  const role = document.getElementById('m-role').value;
+  if (!userId) return;
+  try {
+    await DB.team.add(currentProjectId, userId, role);
+    closeModal();
+    await loadTeam();
+    showToast('Member added');
+  } catch(err) { alert(err.message); }
+}
+
+async function changeRole(userId, role) {
+  await DB.team.updateRole(currentProjectId, userId, role);
+  showToast('Role updated');
+}
+
+async function removeMember(userId) {
+  if (!confirm('Remove this member from the project?')) return;
+  await DB.team.remove(currentProjectId, userId);
+  await loadTeam();
+  showToast('Member removed');
+}
+
+async function deleteProject() {
+  if (!confirm('This will permanently delete the project and all its data. This cannot be undone.\n\nType DELETE to confirm.')) return;
+  const ans = prompt('Type DELETE to confirm:');
+  if (ans !== 'DELETE') return;
+  const { error } = await DB.client.from('projects').delete().eq('id', currentProjectId);
+  if (error) { alert(error.message); return; }
+  localStorage.removeItem('currentProjectId');
+  window.location.href = '/index.html';
+}
+
+function closeModal() { document.getElementById('modal-member').classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+init();
+</script>
+</body>
+</html>

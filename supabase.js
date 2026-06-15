@@ -2,6 +2,9 @@
 //  AGENT PLATFORM — SUPABASE CLIENT
 // ─────────────────────────────────────────────
 
+if (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function') {
+  throw new Error('Supabase CDN failed to load — check network or CDN URL');
+}
 const _supabase = supabase.createClient(
   CONFIG.supabase.url,
   CONFIG.supabase.anonKey

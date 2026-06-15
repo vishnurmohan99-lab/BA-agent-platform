@@ -6,6 +6,7 @@
 <title>Sign in — Agent Platform</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="supabase.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #c9c7be; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -60,23 +61,19 @@
 </div>
 
 <script>
-const _db = supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey);
-
 async function signIn() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const btn = document.getElementById('btn-login');
-  const errEl = document.getElementById('error-msg');
 
   if (!email || !password) { showError('Please enter your email and password.'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Signing in…';
-  errEl.style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
 
   try {
-    const { error } = await _db.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    await DB.auth.signIn(email, password);
     window.location.href = '/index.html';
   } catch (err) {
     showError(err.message || 'Sign in failed. Check your credentials.');
@@ -96,8 +93,8 @@ document.getElementById('password').addEventListener('keydown', e => {
 });
 
 // Redirect if already logged in
-_db.auth.getSession().then(({ data }) => {
-  if (data.session) window.location.href = '/index.html';
+DB.auth.getSession().then(session => {
+  if (session) window.location.href = '/index.html';
 });
 </script>
 </body>

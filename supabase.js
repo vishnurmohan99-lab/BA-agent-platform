@@ -36,11 +36,13 @@ const DB = {
 
   // ── Session guard — call at top of every page ──
   async requireAuth() {
+    document.body.style.visibility = 'hidden';
     const session = await DB.auth.getSession();
     if (!session) {
       window.location.href = '/login.html';
       return null;
     }
+    document.body.style.visibility = '';
     return session;
   },
 

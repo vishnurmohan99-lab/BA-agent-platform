@@ -1,0 +1,170 @@
+/* ─────────────────────────────────────────────
+   AGENT PLATFORM — ANIMATIONS
+   Shared across all pages
+───────────────────────────────────────────── */
+
+/* ── Page fade-in ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Page entry ── */
+.page {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ── Cards ── */
+.card, .metric {
+  animation: fadeUp 0.35s ease both;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+.metric:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  transform: translateY(-2px);
+}
+
+/* Stagger cards */
+.metric:nth-child(1) { animation-delay: 0.05s; }
+.metric:nth-child(2) { animation-delay: 0.10s; }
+.metric:nth-child(3) { animation-delay: 0.15s; }
+.metric:nth-child(4) { animation-delay: 0.20s; }
+
+/* ── Buttons ── */
+.btn {
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+}
+.btn:active {
+  transform: scale(0.96) !important;
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(29,158,117,0.35);
+}
+
+/* ── Nav links ── */
+#ap-nav .nav-link {
+  transition: color 0.15s, background 0.15s, padding-left 0.15s, border-left 0.15s !important;
+}
+
+/* ── Nav slide open/close ── */
+#ap-nav {
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+}
+
+/* ── Table rows ── */
+tr, .story-row, .project-row, .activity-item, .doc-item {
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  animation: fadeUp 0.3s ease both;
+}
+
+/* ── Modal open ── */
+.modal-overlay.open .modal,
+.modal.open {
+  animation: scaleIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.modal-overlay {
+  animation: fadeIn 0.2s ease;
+}
+
+/* ── Form inputs ── */
+input[type=text], input[type=email], input[type=password],
+textarea, select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(29,158,117,0.12) !important;
+}
+
+/* ── Badge pop ── */
+.badge, .badge-status, .nav-role {
+  animation: scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* ── Doc / queue items stagger ── */
+.doc-item:nth-child(1)  { animation-delay: 0.03s; }
+.doc-item:nth-child(2)  { animation-delay: 0.06s; }
+.doc-item:nth-child(3)  { animation-delay: 0.09s; }
+.doc-item:nth-child(4)  { animation-delay: 0.12s; }
+.doc-item:nth-child(5)  { animation-delay: 0.15s; }
+.doc-item:nth-child(6)  { animation-delay: 0.18s; }
+
+/* ── Upload zone drag feedback ── */
+.upload-zone {
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease !important;
+}
+.upload-zone.drag-over {
+  transform: scale(1.02);
+}
+
+/* ── Metric numbers pop in ── */
+.metric-num {
+  animation: countUp 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  animation-delay: 0.2s;
+  display: inline-block;
+}
+
+/* ── Toast slide up ── */
+.toast.show {
+  animation: fadeUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both !important;
+}
+
+/* ── Loading pulse ── */
+.empty {
+  animation: fadeIn 0.4s ease;
+}
+
+/* ── Page header ── */
+.page-header, .page-title {
+  animation: slideInLeft 0.3s ease both;
+}
+
+/* ── Status pills / type pills ── */
+.type-pill {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.12s ease !important;
+}
+.type-pill:hover {
+  transform: translateY(-1px);
+}
+.type-pill:active {
+  transform: scale(0.95);
+}
+
+/* ── Reduce motion for accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

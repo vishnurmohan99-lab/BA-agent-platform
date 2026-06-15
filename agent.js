@@ -4,15 +4,14 @@
 // ─────────────────────────────────────────────
 
 const AI = {
-  // Core call — used by all agents
+  // Core call — used by all agents.
+  // Routes through the /api/ai serverless proxy so the API key
+  // stays server-side (Vercel env var) and never reaches the browser.
   async call(systemPrompt, userMessage, options = {}) {
-    const res = await fetch(`${CONFIG.ai.baseUrl}/chat/completions`, {
+    const res = await fetch('/api/ai', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.ai.apiKey}`,
-        'HTTP-Referer': window.location.origin,
-        'X-Title': CONFIG.app.name,
       },
       body: JSON.stringify({
         model: options.model || CONFIG.ai.model,

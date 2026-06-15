@@ -10,10 +10,9 @@ const CONFIG = {
   },
 
   // ── AI Provider (OpenRouter) ──────────────────
+  // The API key is NOT here — it lives server-side as the
+  // OPENROUTER_API_KEY env var and is used by /api/ai.js.
   ai: {
-    apiKey: 'REPLACE_WITH_YOUR_OPENROUTER_KEY',  // set locally / via proxy — do not commit the real key
-    baseUrl: 'https://openrouter.ai/api/v1',
-
     // FREE phase — Llama 3.3 70B (no cost, no card)
     model: 'meta-llama/llama-3.3-70b-instruct:free',
 

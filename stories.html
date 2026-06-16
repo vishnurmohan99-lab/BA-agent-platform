@@ -160,6 +160,9 @@
       <option value="medium">Medium</option>
       <option value="low">Low</option>
     </select>
+    <select class="filter" id="filter-feature" onchange="filterStories()">
+      <option value="">All features</option>
+    </select>
   </div>
 
   <!-- Pipeline columns -->
@@ -259,7 +262,16 @@ async function init() {
 
 async function loadStories() {
   allStories = await DB.stories.list(currentProjectId);
+  populateFeatureFilter();
   renderPipeline(allStories);
+}
+
+function populateFeatureFilter() {
+  const sel = document.getElementById('filter-feature');
+  const current = sel.value;
+  const features = [...new Set(allStories.map(s => s.feature_name).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All features</option>' +
+    features.map(f => `<option value="${f}" ${f === current ? 'selected' : ''}>${f}</option>`).join('');
 }
 
 function renderPipeline(stories) {
@@ -288,6 +300,7 @@ function storyCard(s) {
           <span class="badge badge-${s.priority || 'medium'}">${s.priority || 'medium'}</span>
           <span style="font-size:11px;color:#aaa">v${s.version || 1}</span>
         </div>
+        ${s.feature_name ? `<div style="margin-top:6px;font-size:11px;color:#1D9E75;font-weight:500;display:flex;align-items:center;gap:4px"><i class="ti ti-tag" style="font-size:11px"></i>${s.feature_name}</div>` : ''}
       </div>
     </div>
     <div class="story-actions">
@@ -410,10 +423,12 @@ function filterStories() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const status = document.getElementById('filter-status').value;
   const priority = document.getElementById('filter-priority').value;
+  const feature = document.getElementById('filter-feature').value;
   const filtered = allStories.filter(s =>
     (!q || s.title.toLowerCase().includes(q) || (s.story_id || '').toLowerCase().includes(q)) &&
     (!status || s.status === status) &&
-    (!priority || s.priority === priority)
+    (!priority || s.priority === priority) &&
+    (!feature || s.feature_name === feature)
   );
   renderPipeline(filtered);
 }

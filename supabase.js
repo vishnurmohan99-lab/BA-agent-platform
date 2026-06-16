@@ -336,6 +336,47 @@ const DB = {
     },
   },
 
+  // ── Sprints ───────────────────────────────────
+  sprints: {
+    async list(projectId) {
+      const { data } = await _supabase.from('sprints').select('*').eq('project_id', projectId).order('start_date', { ascending: true });
+      return data || [];
+    },
+    async create(payload) {
+      const { data, error } = await _supabase.from('sprints').insert(payload).select().single();
+      if (error) throw error;
+      return data;
+    },
+    async update(id, payload) {
+      const { data, error } = await _supabase.from('sprints').update(payload).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    async delete(id) {
+      const { error } = await _supabase.from('sprints').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async getStories(sprintId) {
+      const { data } = await _supabase.from('sprint_stories').select('*, user_stories(*)').eq('sprint_id', sprintId);
+      return (data || []).map(r => ({ ...r.user_stories, _sprint_story_id: r.id }));
+    },
+    async addStories(sprintId, storyIds) {
+      const rows = storyIds.map(story_id => ({ sprint_id: sprintId, story_id }));
+      const { error } = await _supabase.from('sprint_stories').upsert(rows, { onConflict: 'sprint_id,story_id' });
+      if (error) throw error;
+    },
+    async removeStory(sprintId, storyId) {
+      const { error } = await _supabase.from('sprint_stories').delete().eq('sprint_id', sprintId).eq('story_id', storyId);
+      if (error) throw error;
+    },
+    async moveStories(storyIds, fromSprintId, toSprintId) {
+      await Promise.all(storyIds.map(id => _supabase.from('sprint_stories').delete().eq('sprint_id', fromSprintId).eq('story_id', id)));
+      const rows = storyIds.map(story_id => ({ sprint_id: toSprintId, story_id }));
+      const { error } = await _supabase.from('sprint_stories').upsert(rows, { onConflict: 'sprint_id,story_id' });
+      if (error) throw error;
+    },
+  },
+
   // ── Activity log ──────────────────────────────
   activity: {
     async log(projectId, type, description) {

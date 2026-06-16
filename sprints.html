@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprints — Agent Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="nav.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f0;color:#1a1a18}
+  .page{padding:28px 32px;max-width:960px}
+  .page-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .page-title{font-size:20px;font-weight:600;flex:1}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:#1D9E75;color:#fff}
+  .btn-primary:hover{background:#0F6E56}
+  .btn-secondary{background:#fff;color:#444;border:1px solid #e0dfd8}
+  .btn-secondary:hover{background:#f0f0eb}
+  .btn-danger{background:#fff;color:#A32D2D;border:1px solid #f0c0c0}
+  .btn-danger:hover{background:#FCEBEB}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn-xs{padding:3px 8px;font-size:11px}
+
+  /* Tabs */
+  .tab-bar{display:flex;gap:0;border-bottom:1px solid #e8e7e0;margin-bottom:20px}
+  .tab{padding:8px 16px;font-size:13px;cursor:pointer;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:#1D9E75;border-bottom-color:#1D9E75;font-weight:500}
+
+  /* Sprint card */
+  .sprint-card{background:#fff;border:1px solid #e8e7e0;border-radius:12px;margin-bottom:14px;overflow:hidden}
+  .sprint-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;transition:background .15s}
+  .sprint-header:hover{background:#fafaf8}
+  .sprint-toggle{font-size:14px;color:#aaa;transition:transform .2s;flex-shrink:0}
+  .sprint-toggle.open{transform:rotate(90deg)}
+  .sprint-info{flex:1;min-width:0}
+  .sprint-name{font-size:15px;font-weight:600;color:#1a1a18}
+  .sprint-meta{display:flex;gap:12px;align-items:center;margin-top:4px;flex-wrap:wrap}
+  .sprint-dates{font-size:12px;color:#888}
+  .sprint-goal{font-size:12px;color:#666;font-style:italic;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px}
+  .sprint-actions{display:flex;gap:6px;flex-shrink:0}
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:capitalize}
+  .badge-planning{background:#f0efe8;color:#666}
+  .badge-active{background:#E1F5EE;color:#085041}
+  .badge-completed{background:#E6F1FB;color:#0C447C}
+  .badge-high{background:#FCEBEB;color:#A32D2D}
+  .badge-medium{background:#FAEEDA;color:#633806}
+  .badge-low{background:#E1F5EE;color:#085041}
+  .badge-draft{background:#f0efe8;color:#666}
+  .badge-in_review{background:#E6F1FB;color:#0C447C}
+  .badge-approved{background:#E1F5EE;color:#085041}
+  .badge-deprecated{background:#f5e8e8;color:#7a3333}
+
+  /* Sprint body */
+  .sprint-body{border-top:1px solid #f0efe8;display:none}
+  .sprint-body.open{display:block}
+  .sprint-body-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #f5f5f0;background:#fafaf8}
+
+  /* Feature group inside sprint */
+  .sprint-feature{border-bottom:1px solid #f0efe8}
+  .sprint-feature:last-child{border-bottom:none}
+  .sprint-feature-header{display:flex;align-items:center;gap:10px;padding:10px 20px;background:#f8f8f4}
+  .sprint-feature-name{font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;flex:1}
+  .move-feature-btn{font-size:11px}
+
+  /* Story rows in sprint */
+  .sprint-story-row{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid #f8f8f4;transition:background .12s}
+  .sprint-story-row:last-child{border-bottom:none}
+  .sprint-story-row:hover{background:#fafaf8}
+  .story-id-col{font-size:10px;font-weight:700;color:#bbb;letter-spacing:.06em;width:80px;flex-shrink:0}
+  .story-title-col{flex:1;font-size:13px;color:#1a1a18}
+  .story-row-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+  /* Empty state */
+  .empty-sprint{padding:28px;text-align:center;color:#aaa;font-size:13px}
+
+  /* Modals */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+  .modal-wide{max-width:580px}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:18px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:5px}
+  .form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 12px;border:1px solid #e0dfd8;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+  .form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#1D9E75}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  /* Story picker */
+  .picker-feature{margin-bottom:10px}
+  .picker-feature-header{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8f8f4;border-radius:8px 8px 0 0;border:1px solid #e8e7e0;border-bottom:none;cursor:pointer}
+  .picker-feature-label{font-size:12px;font-weight:600;color:#555;flex:1}
+  .picker-stories{border:1px solid #e8e7e0;border-radius:0 0 8px 8px;overflow:hidden}
+  .picker-story-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0efe8;font-size:13px;cursor:pointer}
+  .picker-story-row:last-child{border-bottom:none}
+  .picker-story-row:hover{background:#f8f8f4}
+  .picker-story-row input{flex-shrink:0}
+  .picker-story-id{font-size:10px;color:#aaa;font-weight:700;letter-spacing:.05em;margin-left:4px}
+
+  /* Move modal */
+  .sprint-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e8e7e0;border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+  .sprint-option:hover{border-color:#1D9E75;background:#f0fbf7}
+  .sprint-option.selected{border-color:#1D9E75;background:#f0fbf7}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none}
+  .toast.show{opacity:1}
+
+  @media(max-width:1024px){.page{padding:56px 16px 24px!important}}
+</style>
+<link rel="stylesheet" href="animations.css">
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title" id="page-title">Sprints</div>
+    <button class="btn btn-primary" onclick="openSprintModal()"><i class="ti ti-plus"></i> New Sprint</button>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" data-tab="all" onclick="switchTab('all')">All</div>
+    <div class="tab" data-tab="planning" onclick="switchTab('planning')">Planning</div>
+    <div class="tab" data-tab="active" onclick="switchTab('active')">Active</div>
+    <div class="tab" data-tab="completed" onclick="switchTab('completed')">Completed</div>
+  </div>
+
+  <div id="sprint-list"><div style="text-align:center;padding:48px;color:#aaa">Loading…</div></div>
+</div>
+
+<!-- Sprint create/edit modal -->
+<div class="modal-overlay" id="modal-sprint">
+  <div class="modal">
+    <h3 id="sp-modal-title">New Sprint</h3>
+    <div class="form-group"><label>Sprint name *</label><input type="text" id="sp-name" placeholder="e.g. Sprint 1 — Women's Safety"></div>
+    <div class="form-group"><label>Goal</label><textarea id="sp-goal" style="min-height:64px" placeholder="What does this sprint aim to deliver?"></textarea></div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Start date</label><input type="date" id="sp-start"></div>
+      <div class="form-group"><label>End date</label><input type="date" id="sp-end"></div>
+    </div>
+    <div class="form-group"><label>Status</label>
+      <select id="sp-status">
+        <option value="planning">Planning</option>
+        <option value="active">Active</option>
+        <option value="completed">Completed</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sprint')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSprint()"><i class="ti ti-device-floppy"></i> Save sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add stories modal -->
+<div class="modal-overlay" id="modal-add-stories">
+  <div class="modal modal-wide">
+    <h3>Add stories to sprint</h3>
+    <p style="font-size:12px;color:#888;margin-bottom:14px">Select individual stories or check a feature to add all its stories.</p>
+    <div id="story-picker"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-stories')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddStories()"><i class="ti ti-plus"></i> Add selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move stories modal -->
+<div class="modal-overlay" id="modal-move">
+  <div class="modal">
+    <h3 id="move-modal-title">Move to sprint</h3>
+    <div id="sprint-options"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-move')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmMove()">Move</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentProjectId = null;
+let allSprints = [];
+let allStories = [];
+let currentTab = 'all';
+let editingSprintId = null;
+let addingToSprintId = null;
+let movingStoryIds = [];
+let movingFromSprintId = null;
+let sprintExpanded = {};
+
+async function init() {
+  await Nav.init();
+  currentProjectId = localStorage.getItem('currentProjectId');
+  if (!currentProjectId) { window.location.href = '/index.html'; return; }
+  const project = await DB.projects.get(currentProjectId);
+  if (project) document.getElementById('page-title').textContent = `Sprints — ${project.name}`;
+  allStories = await DB.stories.list(currentProjectId);
+  await loadSprints();
+}
+
+async function loadSprints() {
+  allSprints = await DB.sprints.list(currentProjectId);
+  renderSprints();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderSprints();
+}
+
+function renderSprints() {
+  const filtered = currentTab === 'all' ? allSprints : allSprints.filter(s => s.status === currentTab);
+  const container = document.getElementById('sprint-list');
+  if (!filtered.length) {
+    container.innerHTML = `<div style="text-align:center;padding:48px;color:#aaa;font-size:13px">No sprints yet. Click "+ New Sprint" to create one.</div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(sp => sprintCard(sp)).join('');
+}
+
+function sprintCard(sp) {
+  const isOpen = sprintExpanded[sp.id] !== false;
+  const dateStr = [sp.start_date, sp.end_date].filter(Boolean).map(d => new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'})).join(' → ');
+  return `<div class="sprint-card" id="sc-${sp.id}">
+    <div class="sprint-header" onclick="toggleSprint('${sp.id}')">
+      <i class="ti ti-chevron-right sprint-toggle ${isOpen?'open':''}"></i>
+      <div class="sprint-info">
+        <div class="sprint-name">${sp.name}</div>
+        <div class="sprint-meta">
+          <span class="badge badge-${sp.status}">${sp.status}</span>
+          ${dateStr ? `<span class="sprint-dates"><i class="ti ti-calendar" style="font-size:11px"></i> ${dateStr}</span>` : ''}
+        </div>
+        ${sp.goal ? `<div class="sprint-goal">${sp.goal}</div>` : ''}
+      </div>
+      <div class="sprint-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-secondary btn-sm" onclick="openSprintModal('${sp.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSprint('${sp.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+    <div class="sprint-body ${isOpen?'open':''}" id="sb-${sp.id}">
+      <div class="sprint-body-toolbar">
+        <span style="font-size:12px;color:#888" id="story-count-${sp.id}">Loading stories…</span>
+        <button class="btn btn-secondary btn-sm" onclick="openAddStories('${sp.id}')"><i class="ti ti-plus"></i> Add stories</button>
+      </div>
+      <div id="sprint-stories-${sp.id}"><div class="empty-sprint">Loading…</div></div>
+    </div>
+  </div>`;
+}
+
+async function toggleSprint(sprintId) {
+  sprintExpanded[sprintId] = sprintExpanded[sprintId] === false ? true : false;
+  const toggle = document.querySelector(`#sc-${sprintId} .sprint-toggle`);
+  const body = document.getElementById(`sb-${sprintId}`);
+  const isOpen = sprintExpanded[sprintId] !== false;
+  toggle?.classList.toggle('open', isOpen);
+  body?.classList.toggle('open', isOpen);
+  if (isOpen) await loadSprintStories(sprintId);
+}
+
+async function loadSprintStories(sprintId) {
+  const stories = await DB.sprints.getStories(sprintId);
+  const countEl = document.getElementById(`story-count-${sprintId}`);
+  const bodyEl = document.getElementById(`sprint-stories-${sprintId}`);
+  if (countEl) countEl.textContent = `${stories.length} ${stories.length === 1 ? 'story' : 'stories'}`;
+  if (!stories.length) {
+    bodyEl.innerHTML = `<div class="empty-sprint">No stories in this sprint. Click "+ Add stories" to add some.</div>`;
+    return;
+  }
+  // Group by feature
+  const groups = {};
+  stories.forEach(s => {
+    const f = s.feature_name || '(No feature)';
+    if (!groups[f]) groups[f] = [];
+    groups[f].push(s);
+  });
+  bodyEl.innerHTML = Object.entries(groups).map(([feature, list]) => `
+    <div class="sprint-feature">
+      <div class="sprint-feature-header">
+        <span class="sprint-feature-name"><i class="ti ti-tag" style="font-size:11px"></i> ${feature}</span>
+        <button class="btn btn-secondary btn-xs move-feature-btn" onclick="openMoveModal('${sprintId}',${JSON.stringify(list.map(s=>s.id))})">
+          <i class="ti ti-arrow-right"></i> Move feature
+        </button>
+        <button class="btn btn-danger btn-xs" style="margin-left:4px" onclick="removeFeatureFromSprint('${sprintId}',${JSON.stringify(list.map(s=>s.id))})">
+          <i class="ti ti-x"></i> Remove all
+        </button>
+      </div>
+      ${list.map(s => `
+        <div class="sprint-story-row">
+          <span class="story-id-col">${s.story_id || '—'}</span>
+          <span class="story-title-col">${s.title}</span>
+          <div class="story-row-right">
+            <span class="badge badge-${s.status||'draft'}">${(s.status||'draft').replace('_',' ')}</span>
+            <span class="badge badge-${s.priority||'medium'}">${s.priority||'medium'}</span>
+            <button class="btn btn-secondary btn-xs" onclick="openMoveModal('${sprintId}',['${s.id}'])"><i class="ti ti-arrow-right"></i> Move</button>
+            <button class="btn btn-danger btn-xs" onclick="removeStory('${sprintId}','${s.id}')"><i class="ti ti-x"></i></button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// Load stories for initially expanded sprints
+async function loadInitialStories() {
+  for (const sp of allSprints) {
+    if (sprintExpanded[sp.id] !== false) {
+      await loadSprintStories(sp.id);
+    }
+  }
+}
+
+// ── Sprint CRUD ──────────────────────────────────
+
+function openSprintModal(sprintId = null) {
+  editingSprintId = sprintId;
+  document.getElementById('sp-modal-title').textContent = sprintId ? 'Edit Sprint' : 'New Sprint';
+  const sp = sprintId ? allSprints.find(s => s.id === sprintId) : null;
+  document.getElementById('sp-name').value = sp?.name || '';
+  document.getElementById('sp-goal').value = sp?.goal || '';
+  document.getElementById('sp-start').value = sp?.start_date || '';
+  document.getElementById('sp-end').value = sp?.end_date || '';
+  document.getElementById('sp-status').value = sp?.status || 'planning';
+  document.getElementById('modal-sprint').classList.add('open');
+}
+
+async function saveSprint() {
+  const name = document.getElementById('sp-name').value.trim();
+  if (!name) { alert('Sprint name is required.'); return; }
+  const payload = {
+    name,
+    goal: document.getElementById('sp-goal').value.trim() || null,
+    start_date: document.getElementById('sp-start').value || null,
+    end_date: document.getElementById('sp-end').value || null,
+    status: document.getElementById('sp-status').value,
+    project_id: currentProjectId,
+  };
+  try {
+    if (editingSprintId) {
+      await DB.sprints.update(editingSprintId, payload);
+    } else {
+      await DB.sprints.create(payload);
+    }
+    closeModal('modal-sprint');
+    await loadSprints();
+    showToast(editingSprintId ? 'Sprint updated' : 'Sprint created');
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteSprint(sprintId) {
+  if (!confirm('Delete this sprint? Stories will not be deleted, just unlinked.')) return;
+  await DB.sprints.delete(sprintId);
+  await loadSprints();
+  showToast('Sprint deleted');
+}
+
+// ── Add stories ──────────────────────────────────
+
+function openAddStories(sprintId) {
+  addingToSprintId = sprintId;
+  const sprint = allSprints.find(s => s.id === sprintId);
+  // Get stories already in this sprint to exclude them
+  DB.sprints.getStories(sprintId).then(existing => {
+    const existingIds = new Set(existing.map(s => s.id));
+    const available = allStories.filter(s => !existingIds.has(s.id));
+    renderStoryPicker(available);
+    document.getElementById('modal-add-stories').classList.add('open');
+  });
+}
+
+function renderStoryPicker(stories) {
+  const groups = {};
+  stories.forEach(s => {
+    const f = s.feature_name || '(No feature)';
+    if (!groups[f]) groups[f] = [];
+    groups[f].push(s);
+  });
+  if (!Object.keys(groups).length) {
+    document.getElementById('story-picker').innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:13px">All stories are already in this sprint.</div>';
+    return;
+  }
+  document.getElementById('story-picker').innerHTML = Object.entries(groups).map(([feature, list]) => `
+    <div class="picker-feature">
+      <div class="picker-feature-header" onclick="toggleFeaturePick('${feature.replace(/'/g,"\\'")}')">
+        <input type="checkbox" id="fpick-${feature}" onclick="event.stopPropagation();toggleFeatureCheck('${feature.replace(/'/g,"\\'")}',this.checked)" style="flex-shrink:0">
+        <label class="picker-feature-label" for="fpick-${feature}"><i class="ti ti-tag" style="font-size:11px"></i> ${feature} (${list.length})</label>
+      </div>
+      <div class="picker-stories" id="fp-stories-${feature}">
+        ${list.map(s => `
+          <label class="picker-story-row">
+            <input type="checkbox" class="story-pick" data-feature="${feature}" value="${s.id}">
+            <span class="picker-story-id">${s.story_id||'—'}</span>
+            <span style="flex:1">${s.title}</span>
+            <span class="badge badge-${s.status||'draft'}" style="margin-left:6px">${(s.status||'draft').replace('_',' ')}</span>
+          </label>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function toggleFeatureCheck(feature, checked) {
+  document.querySelectorAll(`.story-pick[data-feature="${feature}"]`).forEach(cb => cb.checked = checked);
+}
+
+async function confirmAddStories() {
+  const checked = [...document.querySelectorAll('.story-pick:checked')].map(cb => cb.value);
+  if (!checked.length) { alert('Select at least one story.'); return; }
+  try {
+    await DB.sprints.addStories(addingToSprintId, checked);
+    closeModal('modal-add-stories');
+    await loadSprintStories(addingToSprintId);
+    showToast(`${checked.length} ${checked.length === 1 ? 'story' : 'stories'} added`);
+  } catch(e) { alert(e.message); }
+}
+
+// ── Remove ───────────────────────────────────────
+
+async function removeStory(sprintId, storyId) {
+  await DB.sprints.removeStory(sprintId, storyId);
+  await loadSprintStories(sprintId);
+  showToast('Story removed from sprint');
+}
+
+async function removeFeatureFromSprint(sprintId, storyIds) {
+  if (!confirm(`Remove all ${storyIds.length} stories from this sprint?`)) return;
+  await Promise.all(storyIds.map(id => DB.sprints.removeStory(sprintId, id)));
+  await loadSprintStories(sprintId);
+  showToast('Feature removed from sprint');
+}
+
+// ── Move ─────────────────────────────────────────
+
+function openMoveModal(fromSprintId, storyIds) {
+  movingStoryIds = storyIds;
+  movingFromSprintId = fromSprintId;
+  const label = storyIds.length === 1 ? '1 story' : `${storyIds.length} stories`;
+  document.getElementById('move-modal-title').textContent = `Move ${label} to sprint`;
+  const others = allSprints.filter(s => s.id !== fromSprintId);
+  if (!others.length) {
+    document.getElementById('sprint-options').innerHTML = '<div style="color:#aaa;font-size:13px;padding:12px 0">No other sprints available. Create another sprint first.</div>';
+  } else {
+    document.getElementById('sprint-options').innerHTML = others.map(sp => `
+      <div class="sprint-option" onclick="selectSprintOption('${sp.id}',this)" data-id="${sp.id}">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${sp.name}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px"><span class="badge badge-${sp.status}">${sp.status}</span></div>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('modal-move').classList.add('open');
+}
+
+function selectSprintOption(id, el) {
+  document.querySelectorAll('.sprint-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function confirmMove() {
+  const selected = document.querySelector('.sprint-option.selected');
+  if (!selected) { alert('Please select a sprint to move to.'); return; }
+  const toSprintId = selected.dataset.id;
+  try {
+    await DB.sprints.moveStories(movingStoryIds, movingFromSprintId, toSprintId);
+    closeModal('modal-move');
+    await loadSprintStories(movingFromSprintId);
+    await loadSprintStories(toSprintId);
+    showToast('Stories moved');
+  } catch(e) { alert(e.message); }
+}
+
+// ── Helpers ──────────────────────────────────────
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function init2() {
+  await init();
+  await loadInitialStories();
+}
+
+init2();
+</script>
+</body>
+</html>

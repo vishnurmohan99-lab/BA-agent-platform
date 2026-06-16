@@ -179,6 +179,9 @@ const Nav = {
         </a>
 
         <div class="nav-section">Delivery</div>
+        <a class="nav-link" href="/sprints.html" data-page="sprints">
+          <i class="ti ti-run"></i> Sprints
+        </a>
         <a class="nav-link" href="/releases.html" data-page="releases">
           <i class="ti ti-rocket"></i> Releases
         </a>

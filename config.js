@@ -13,8 +13,8 @@ const CONFIG = {
   // The API key is NOT here — it lives server-side as the
   // OPENROUTER_API_KEY env var and is used by /api/ai.js.
   ai: {
-    // FREE phase — Llama 3.3 70B (no cost, no card)
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    // FREE phase — Llama 3.1 8B (lighter, more available than 70B)
+    model: 'meta-llama/llama-3.1-8b-instruct:free',
 
     // PAID phase — uncomment one line below, comment the free line above
     // model: 'openai/gpt-4o-mini',

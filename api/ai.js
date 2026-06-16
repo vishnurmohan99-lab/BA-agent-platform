@@ -7,8 +7,10 @@
 const FALLBACK_MODELS = [
   'meta-llama/llama-3.1-8b-instruct:free',
   'qwen/qwen-2.5-7b-instruct:free',
-  'google/gemma-2-9b-it:free',
   'deepseek/deepseek-r1-distill-qwen-7b:free',
+  'deepseek/deepseek-chat:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-8b:free',
 ];
 
 async function callOpenRouter(apiKey, body, model, origin) {
@@ -55,11 +57,10 @@ module.exports = async (req, res) => {
       }
       lastStatus = status;
       lastData = data;
-      const msg = data?.error?.message || '';
-      // Only fall through on provider/rate-limit errors
-      if (status !== 429 && !msg.toLowerCase().includes('provider') && !msg.toLowerCase().includes('unavailable')) {
-        break;
-      }
+      const msg = (data?.error?.message || '').toLowerCase();
+      // Fall through to next model on availability/rate-limit errors
+      const shouldFallback = status === 429 || msg.includes('provider') || msg.includes('unavailable') || msg.includes('no endpoints') || msg.includes('overloaded');
+      if (!shouldFallback) break;
     }
 
     res.status(lastStatus).json(lastData);

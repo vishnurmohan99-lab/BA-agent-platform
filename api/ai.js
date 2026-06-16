@@ -6,8 +6,9 @@
 
 const FALLBACK_MODELS = [
   'meta-llama/llama-3.1-8b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
+  'qwen/qwen-2.5-7b-instruct:free',
   'google/gemma-2-9b-it:free',
+  'deepseek/deepseek-r1-distill-qwen-7b:free',
 ];
 
 async function callOpenRouter(apiKey, body, model, origin) {

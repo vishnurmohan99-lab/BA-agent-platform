@@ -5,12 +5,11 @@
 // ─────────────────────────────────────────────
 
 const FALLBACK_MODELS = [
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'qwen/qwen-2.5-7b-instruct:free',
-  'deepseek/deepseek-r1-distill-qwen-7b:free',
-  'deepseek/deepseek-chat:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-8b:free',
+  'openrouter/owl-alpha',
+  'openai/gpt-oss-120b:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
+  'moonshotai/kimi-k2.6:free',
 ];
 
 async function callOpenRouter(apiKey, body, model, origin) {

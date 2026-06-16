@@ -106,6 +106,26 @@
   .tab.active { color: #1D9E75; border-bottom-color: #1D9E75; font-weight: 500; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+  /* View toggle */
+  .view-toggle { display: flex; background: #fff; border: 1px solid #e0dfd8; border-radius: 8px; overflow: hidden; }
+  .view-btn { padding: 6px 10px; font-size: 13px; cursor: pointer; border: none; background: none; color: #888; transition: all .15s; }
+  .view-btn.active { background: #1D9E75; color: #fff; }
+  /* Kanban */
+  .pipeline { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+  .pipeline-col { flex: 1; min-width: 240px; }
+  .pipeline-col-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 8px 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .col-draft .pipeline-col-header { background: #f0efe8; color: #666; }
+  .col-review .pipeline-col-header { background: #E6F1FB; color: #0C447C; }
+  .col-approved .pipeline-col-header { background: #E1F5EE; color: #085041; }
+  .col-deprecated .pipeline-col-header { background: #f5e8e8; color: #7a3333; }
+  .pipeline-col-body { background: rgba(0,0,0,0.02); border: 1px solid #e8e7e0; border-top: none; border-radius: 0 0 8px 8px; padding: 10px; min-height: 200px; }
+  .story-card { background: #fff; border: 1px solid #e8e7e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; cursor: pointer; transition: all .15s; }
+  .story-card:hover { border-color: #1D9E75; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .story-card.selected { border-color: #1D9E75; background: #f0fbf7; }
+  .story-id { font-size: 10px; font-weight: 700; color: #888; letter-spacing: .06em; margin-bottom: 4px; }
+  .story-title { font-size: 13px; font-weight: 500; color: #1a1a18; line-height: 1.4; margin-bottom: 8px; }
+  .story-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .story-actions { display: flex; gap: 6px; margin-top: 10px; }
   @media (max-width:1024px){.page{padding:56px 16px 24px!important}.page-header{flex-wrap:wrap;gap:10px}.filters{flex-wrap:wrap}}
 </style>
 <link rel="stylesheet" href="animations.css">
@@ -114,6 +134,10 @@
 <div class="page">
   <div class="page-header">
     <div class="page-title">User stories</div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="vbtn-feature" onclick="setView('feature')" title="Group by feature"><i class="ti ti-layout-list"></i></button>
+      <button class="view-btn" id="vbtn-kanban" onclick="setView('kanban')" title="Kanban board"><i class="ti ti-layout-columns"></i></button>
+    </div>
     <button class="btn btn-secondary btn-sm" onclick="exportCSV()"><i class="ti ti-download"></i> Export CSV</button>
     <button class="btn btn-primary" onclick="openGeneratePanel()"><i class="ti ti-sparkles"></i> Generate stories</button>
   </div>
@@ -171,8 +195,30 @@
     </select>
   </div>
 
-  <!-- Feature-grouped stories -->
+  <!-- Feature-grouped view -->
   <div id="features-list"></div>
+
+  <!-- Kanban view -->
+  <div id="kanban-view" style="display:none">
+    <div class="pipeline">
+      <div class="pipeline-col col-draft">
+        <div class="pipeline-col-header">Draft <span id="count-draft">0</span></div>
+        <div class="pipeline-col-body" id="col-draft"></div>
+      </div>
+      <div class="pipeline-col col-review">
+        <div class="pipeline-col-header">In review <span id="count-review">0</span></div>
+        <div class="pipeline-col-body" id="col-review"></div>
+      </div>
+      <div class="pipeline-col col-approved">
+        <div class="pipeline-col-header">Approved <span id="count-approved">0</span></div>
+        <div class="pipeline-col-body" id="col-approved"></div>
+      </div>
+      <div class="pipeline-col col-deprecated">
+        <div class="pipeline-col-header">Deprecated <span id="count-deprecated">0</span></div>
+        <div class="pipeline-col-body" id="col-deprecated"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Story detail panel -->
@@ -237,6 +283,17 @@ let currentStory = null;
 let currentProjectId = null;
 let projectConfig = null;
 let knowledgeDocs = [];
+let currentView = localStorage.getItem('stories-view') || 'feature';
+
+function setView(view) {
+  currentView = view;
+  localStorage.setItem('stories-view', view);
+  document.getElementById('vbtn-feature').classList.toggle('active', view === 'feature');
+  document.getElementById('vbtn-kanban').classList.toggle('active', view === 'kanban');
+  document.getElementById('features-list').style.display = view === 'feature' ? '' : 'none';
+  document.getElementById('kanban-view').style.display = view === 'kanban' ? '' : 'none';
+  filterStories();
+}
 
 async function init() {
   await Nav.init();
@@ -246,6 +303,7 @@ async function init() {
   const project = await DB.projects.get(currentProjectId);
   if (project) document.querySelector('.page-title').textContent = `User stories — ${project.name}`;
   knowledgeDocs = await DB.knowledge.list(currentProjectId);
+  setView(currentView);
   await loadStories();
 }
 
@@ -437,7 +495,43 @@ function filterStories() {
     (!status || s.status === status) &&
     (!priority || s.priority === priority)
   );
-  renderFeatureGroups(filtered);
+  if (currentView === 'kanban') renderPipeline(filtered);
+  else renderFeatureGroups(filtered);
+}
+
+function renderPipeline(stories) {
+  const cols = { draft: [], in_review: [], approved: [], deprecated: [] };
+  stories.forEach(s => { if (cols[s.status]) cols[s.status].push(s); });
+  const colMap = { draft: 'col-draft', in_review: 'col-review', approved: 'col-approved', deprecated: 'col-deprecated' };
+  const countMap = { draft: 'count-draft', in_review: 'count-review', approved: 'count-approved', deprecated: 'count-deprecated' };
+  Object.entries(cols).forEach(([status, list]) => {
+    document.getElementById(countMap[status]).textContent = list.length;
+    document.getElementById(colMap[status]).innerHTML = list.length
+      ? list.map(s => storyCard(s)).join('')
+      : `<div class="empty-col">No stories</div>`;
+  });
+}
+
+function storyCard(s) {
+  return `<div class="story-card ${selectedIds.has(s.id) ? 'selected' : ''}" id="card-${s.id}">
+    <div style="display:flex;align-items:flex-start;gap:8px">
+      <input type="checkbox" ${selectedIds.has(s.id) ? 'checked' : ''} onclick="toggleSelect('${s.id}',event)" style="margin-top:2px;flex-shrink:0">
+      <div style="flex:1" onclick="openStory('${s.id}')">
+        <div class="story-id">${s.story_id || '—'}</div>
+        <div class="story-title">${s.title}</div>
+        <div class="story-meta">
+          <span class="badge badge-${s.priority || 'medium'}">${s.priority || 'medium'}</span>
+          <span style="font-size:11px;color:#aaa">v${s.version || 1}</span>
+        </div>
+        ${s.feature_name ? `<div style="margin-top:6px;font-size:11px;color:#1D9E75;font-weight:500"><i class="ti ti-tag" style="font-size:11px"></i> ${s.feature_name}</div>` : ''}
+      </div>
+    </div>
+    <div class="story-actions">
+      ${s.status === 'draft' ? `<button class="btn btn-sm btn-secondary" onclick="moveStatus('${s.id}','in_review',event)">Submit for review</button>` : ''}
+      ${s.status === 'in_review' ? `<button class="btn btn-sm btn-primary" onclick="moveStatus('${s.id}','approved',event)">Approve</button>` : ''}
+      ${s.status !== 'deprecated' ? `<button class="btn btn-sm btn-danger" onclick="moveStatus('${s.id}','deprecated',event)">Deprecate</button>` : ''}
+    </div>
+  </div>`;
 }
 
 let storyRowSeq = 0;

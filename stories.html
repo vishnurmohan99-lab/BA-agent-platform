@@ -112,6 +112,17 @@
   <!-- Generate form -->
   <div class="generate-form" id="generate-form" style="display:none">
     <h3><i class="ti ti-sparkles" style="color:#1D9E75"></i> Generate new stories</h3>
+
+    <div class="form-group">
+      <label>Feature name *</label>
+      <input type="text" id="gen-feature" placeholder="e.g. Women's Safety">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label>Feature description *</label>
+      <textarea id="gen-desc" placeholder="Describe the overall feature and its purpose…"></textarea>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">User stories under this feature</div>
     <div id="story-inputs"></div>
     <button class="btn btn-secondary btn-sm" onclick="addStoryRow()" style="margin-bottom:16px">
       <i class="ti ti-plus"></i> Add another story
@@ -447,6 +458,10 @@ function closeGeneratePanel() {
 }
 
 async function generateStories() {
+  const featureName = document.getElementById('gen-feature').value.trim();
+  const featureDesc = document.getElementById('gen-desc').value.trim();
+  if (!featureName || !featureDesc) { alert('Please fill in the feature name and description.'); return; }
+
   const entries = [];
   document.querySelectorAll('[id^="srow-"]').forEach(el => {
     const idx = el.id.replace('srow-', '');
@@ -464,7 +479,7 @@ async function generateStories() {
 
   try {
     for (const entry of entries) {
-      const featureText = `Feature: ${entry.name}\n\n${entry.desc}`;
+      const featureText = `Feature: ${featureName}\nFeature description: ${featureDesc}\n\nUser story to generate:\nStory name: ${entry.name}\nStory description: ${entry.desc}`;
       const stories = await BAAgent.generate(featureText, 1, projectConfig, knowledgeDocs);
       const review = await BAAgent.review(stories, projectConfig, knowledgeDocs);
       for (const s of stories) {
@@ -472,7 +487,7 @@ async function generateStories() {
           project_id: currentProjectId,
           story_id: s.story_id,
           title: s.title,
-          feature_name: entry.name,
+          feature_name: featureName,
           story_text: s.story_text,
           acceptance_criteria: JSON.stringify(s.acceptance_criteria),
           edge_cases: JSON.stringify(s.edge_cases),

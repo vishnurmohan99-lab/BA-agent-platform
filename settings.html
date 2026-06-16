@@ -94,8 +94,14 @@
       <div class="hint">These rules are prepended to every agent prompt. Be specific.</div>
     </div>
     <div class="form-group">
-      <label>BA agent system prompt (advanced — optional override)</label>
-      <textarea id="a-ba-prompt" style="min-height:150px" placeholder="Leave blank to use the default BA agent prompt. Only fill this if you want to fully customise how stories are written."></textarea>
+      <label>User story generation prompt (advanced — optional override)</label>
+      <textarea id="a-ba-prompt" style="min-height:150px" placeholder="Leave blank to use the default prompt. Override to fully customise how user stories are written. Must instruct the AI to return valid JSON with a 'stories' array."></textarea>
+      <div class="hint">The AI must return JSON: <code>{"stories":[{...}]}</code>. Project context is always appended below your prompt.</div>
+    </div>
+    <div class="form-group" style="margin-top:8px">
+      <label>Test case generation prompt (advanced — optional override)</label>
+      <textarea id="a-qa-prompt" style="min-height:150px" placeholder="Leave blank to use the default prompt. Override to customise how test cases are generated. Must instruct the AI to return valid JSON with a 'test_cases' array."></textarea>
+      <div class="hint">The AI must return JSON: <code>{"test_cases":[{...}]}</code>.</div>
     </div>
     <div class="save-row"><button class="btn btn-primary" onclick="saveAgentConfig()"><i class="ti ti-device-floppy"></i> Save agent config</button></div>
   </div>
@@ -175,6 +181,7 @@ function fillAgentForm(cfg) {
   document.getElementById('a-format').value = cfg.ac_format || 'Given/When/Then';
   document.getElementById('a-rules').value = cfg.custom_rules || '';
   document.getElementById('a-ba-prompt').value = cfg.ba_prompt_override || '';
+  document.getElementById('a-qa-prompt').value = cfg.qa_prompt_override || '';
 }
 
 async function saveProject() {
@@ -197,6 +204,7 @@ async function saveAgentConfig() {
     ac_format: document.getElementById('a-format').value,
     custom_rules: document.getElementById('a-rules').value.trim(),
     ba_prompt_override: document.getElementById('a-ba-prompt').value.trim(),
+    qa_prompt_override: document.getElementById('a-qa-prompt').value.trim(),
     story_prefix: document.getElementById('s-prefix').value.trim().toUpperCase() || 'STORY',
     industry: document.getElementById('s-industry').value.trim(),
   });

@@ -6,7 +6,7 @@ const QAAgent = {
 
   // ── Test case generation ──────────────────────
   async generateTestCases(stories, projectConfig) {
-    const prompt = `You are a QA Engineer. Generate comprehensive test cases from user stories.
+    const DEFAULT_PROMPT = `You are a QA Engineer. Generate comprehensive test cases from user stories.
 Return ONLY valid JSON:
 {
   "test_cases": [
@@ -22,6 +22,7 @@ Return ONLY valid JSON:
 }
 Generate at least 2 test cases per story (1 functional, 1 edge case or negative).
 Every step must be specific and actionable.`;
+    const prompt = projectConfig?.qa_prompt_override || DEFAULT_PROMPT;
 
     const userMessage = `Generate test cases for these approved user stories:\n\n${JSON.stringify(stories, null, 2)}`;
     const raw = await AI.call(prompt, userMessage);

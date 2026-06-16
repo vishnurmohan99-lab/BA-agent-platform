@@ -53,7 +53,8 @@ Review the provided user stories and return ONLY valid JSON:
 Be specific in notes. If something passes cleanly, say so. Do not rewrite stories.`,
 
   async generate(featureDescription, storyCount, projectConfig, knowledgeDocs) {
-    const systemPrompt = AI.buildSystemPrompt(this.BASE_PROMPT, projectConfig, knowledgeDocs);
+    const basePrompt = projectConfig?.ba_prompt_override || this.BASE_PROMPT;
+    const systemPrompt = AI.buildSystemPrompt(basePrompt, projectConfig, knowledgeDocs);
     const userMessage = `Generate exactly ${storyCount} user stories for this feature:\n\n${featureDescription}\n\nUse story ID prefix: ${projectConfig?.story_prefix || 'STORY'}`;
 
     const raw = await AI.call(systemPrompt, userMessage);
@@ -73,7 +74,8 @@ Be specific in notes. If something passes cleanly, say so. Do not rewrite storie
   },
 
   async regenerate(stories, feedback, projectConfig, knowledgeDocs) {
-    const systemPrompt = AI.buildSystemPrompt(this.BASE_PROMPT, projectConfig, knowledgeDocs);
+    const basePrompt = projectConfig?.ba_prompt_override || this.BASE_PROMPT;
+    const systemPrompt = AI.buildSystemPrompt(basePrompt, projectConfig, knowledgeDocs);
     const userMessage = `Improve these user stories based on this feedback:\n\nFEEDBACK: ${feedback}\n\nORIGINAL STORIES:\n${JSON.stringify(stories, null, 2)}\n\nReturn improved stories in the same JSON format.`;
 
     const raw = await AI.call(systemPrompt, userMessage);

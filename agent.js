@@ -8,29 +8,27 @@ const AI = {
   // Routes through the /api/ai serverless proxy so the API key
   // stays server-side (Vercel env var) and never reaches the browser.
   async call(systemPrompt, userMessage, options = {}) {
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: options.model || CONFIG.ai.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: options.temperature || CONFIG.ai.temperature,
-        max_tokens: options.maxTokens || CONFIG.ai.maxTokens,
-      }),
+    const body = JSON.stringify({
+      model: options.model || CONFIG.ai.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: options.temperature || CONFIG.ai.temperature,
+      max_tokens: options.maxTokens || CONFIG.ai.maxTokens,
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `AI call failed: ${res.status}`);
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+      const res = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return data.choices?.[0]?.message?.content || '';
+      const msg = data.error?.message || `AI call failed: ${res.status}`;
+      if (res.status !== 429 && !msg.includes('provider')) throw new Error(msg);
+      lastErr = new Error(msg);
     }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
+    throw lastErr;
   },
 
   // Build system prompt injecting project context

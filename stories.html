@@ -112,23 +112,13 @@
   <!-- Generate form -->
   <div class="generate-form" id="generate-form" style="display:none">
     <h3><i class="ti ti-sparkles" style="color:#1D9E75"></i> Generate new stories</h3>
-    <div class="form-group">
-      <label>Feature name *</label>
-      <input type="text" id="gen-feature" placeholder="e.g. Ride Receipt">
-    </div>
-    <div class="form-group">
-      <label>Feature description *</label>
-      <textarea id="gen-desc" placeholder="Describe what this feature does and who it's for…"></textarea>
-    </div>
-    <div class="form-row">
-      <div class="form-group" style="margin:0">
-        <label>Number of stories</label>
-        <select id="gen-count"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
-      </div>
-      <div style="align-self:flex-end;display:flex;gap:8px">
-        <button class="btn btn-secondary" onclick="closeGeneratePanel()">Cancel</button>
-        <button class="btn btn-primary" id="btn-generate" onclick="generateStories()"><i class="ti ti-sparkles"></i> Generate</button>
-      </div>
+    <div id="story-inputs"></div>
+    <button class="btn btn-secondary btn-sm" onclick="addStoryRow()" style="margin-bottom:16px">
+      <i class="ti ti-plus"></i> Add another story
+    </button>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="closeGeneratePanel()">Cancel</button>
+      <button class="btn btn-primary" id="btn-generate" onclick="generateStories()"><i class="ti ti-sparkles"></i> Generate</button>
     </div>
   </div>
 
@@ -417,7 +407,39 @@ function filterStories() {
   renderPipeline(filtered);
 }
 
+let storyRowSeq = 0;
+
+function addStoryRow() {
+  storyRowSeq++;
+  const idx = storyRowSeq;
+  const total = document.querySelectorAll('[id^="srow-"]').length + 1;
+  const wrap = document.createElement('div');
+  wrap.id = `srow-${idx}`;
+  wrap.style.cssText = 'background:#f8f8f4;border:1px solid #e8e7e0;border-radius:10px;padding:14px;margin-bottom:12px';
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em">Story ${idx}</div>
+      ${idx > 1 ? `<button onclick="removeStoryRow(${idx})" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:18px;line-height:1;padding:0">×</button>` : ''}
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Story name *</label>
+      <input type="text" id="sname-${idx}" placeholder="e.g. Women's Safety KYC Verification">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label>Description *</label>
+      <textarea id="sdesc-${idx}" style="min-height:72px" placeholder="Describe what this story covers and who it's for…"></textarea>
+    </div>`;
+  document.getElementById('story-inputs').appendChild(wrap);
+}
+
+function removeStoryRow(idx) {
+  document.getElementById(`srow-${idx}`)?.remove();
+}
+
 function openGeneratePanel() {
+  document.getElementById('story-inputs').innerHTML = '';
+  storyRowSeq = 0;
+  addStoryRow();
   document.getElementById('generate-form').style.display = 'block';
 }
 function closeGeneratePanel() {
@@ -425,35 +447,42 @@ function closeGeneratePanel() {
 }
 
 async function generateStories() {
-  const feature = document.getElementById('gen-feature').value.trim();
-  const desc = document.getElementById('gen-desc').value.trim();
-  const count = parseInt(document.getElementById('gen-count').value);
-  if (!feature || !desc) { alert('Please fill in feature name and description.'); return; }
+  const entries = [];
+  document.querySelectorAll('[id^="srow-"]').forEach(el => {
+    const idx = el.id.replace('srow-', '');
+    const name = document.getElementById(`sname-${idx}`)?.value.trim();
+    const desc = document.getElementById(`sdesc-${idx}`)?.value.trim();
+    if (name || desc) entries.push({ name: name || 'Untitled', desc: desc || '', idx });
+  });
+  if (!entries.length) { alert('Please add at least one story.'); return; }
+  const missing = entries.find(e => !e.name || !e.desc);
+  if (missing) { alert(`Please fill in both name and description for Story ${missing.idx}.`); return; }
 
   const btn = document.getElementById('btn-generate');
   btn.innerHTML = '<span class="spinner"></span> Generating…';
   btn.disabled = true;
 
   try {
-    const featureText = `Feature: ${feature}\n\n${desc}`;
-    const stories = await BAAgent.generate(featureText, count, projectConfig, knowledgeDocs);
-    const review = await BAAgent.review(stories, projectConfig, knowledgeDocs);
-
-    for (const s of stories) {
-      await DB.stories.create({
-        project_id: currentProjectId,
-        story_id: s.story_id,
-        title: s.title,
-        feature_name: feature,
-        story_text: s.story_text,
-        acceptance_criteria: JSON.stringify(s.acceptance_criteria),
-        edge_cases: JSON.stringify(s.edge_cases),
-        business_rules_referenced: JSON.stringify(s.business_rules_referenced || []),
-        priority: s.priority || 'medium',
-        status: 'draft',
-        version: 1,
-        reviewer_output: JSON.stringify(review),
-      });
+    for (const entry of entries) {
+      const featureText = `Feature: ${entry.name}\n\n${entry.desc}`;
+      const stories = await BAAgent.generate(featureText, 1, projectConfig, knowledgeDocs);
+      const review = await BAAgent.review(stories, projectConfig, knowledgeDocs);
+      for (const s of stories) {
+        await DB.stories.create({
+          project_id: currentProjectId,
+          story_id: s.story_id,
+          title: s.title,
+          feature_name: entry.name,
+          story_text: s.story_text,
+          acceptance_criteria: JSON.stringify(s.acceptance_criteria),
+          edge_cases: JSON.stringify(s.edge_cases),
+          business_rules_referenced: JSON.stringify(s.business_rules_referenced || []),
+          priority: s.priority || 'medium',
+          status: 'draft',
+          version: 1,
+          reviewer_output: JSON.stringify(review),
+        });
+      }
     }
     closeGeneratePanel();
     await loadStories();

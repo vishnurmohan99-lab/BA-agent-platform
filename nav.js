@@ -9,6 +9,7 @@ const Nav = {
   userRole: null,
 
   async init() {
+    this._renderSkeleton(); // inject sidebar immediately — prevents flicker when body is revealed
     await DB.requireAuth();
     this.currentUser = await DB.getCurrentUser();
     const projectId = localStorage.getItem('currentProjectId');
@@ -18,6 +19,18 @@ const Nav = {
     }
     this.render();
     this.highlightActive();
+  },
+
+  _renderSkeleton() {
+    if (document.getElementById('ap-nav')) return;
+    const nav = document.createElement('div');
+    nav.id = 'ap-nav';
+    nav.innerHTML = `<style>
+      #ap-nav{position:fixed;left:0;top:0;bottom:0;width:220px;background:#0f1117;z-index:100;border-right:1px solid rgba(255,255,255,0.06)}
+      body{margin-left:220px}
+      @media(max-width:1024px){#ap-nav{transform:translateX(-100%)}body{margin-left:0!important}}
+    </style>`;
+    document.body.prepend(nav);
   },
 
   setProject(project) {

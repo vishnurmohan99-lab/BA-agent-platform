@@ -30,25 +30,34 @@
   .search-box input { width: 100%; padding: 8px 12px 8px 34px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; background: #fff; outline: none; }
   .search-box i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 16px; }
   select.filter { padding: 8px 12px; border: 1px solid #e0dfd8; border-radius: 8px; font-size: 13px; background: #fff; outline: none; color: #444; cursor: pointer; }
-  .pipeline { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
-  .pipeline-col { flex: 1; min-width: 260px; }
-  .pipeline-col-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 8px 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-  .col-draft .pipeline-col-header { background: #f0efe8; color: #666; }
-  .col-review .pipeline-col-header { background: #E6F1FB; color: #0C447C; }
-  .col-approved .pipeline-col-header { background: #E1F5EE; color: #085041; }
-  .col-deprecated .pipeline-col-header { background: #f5e8e8; color: #7a3333; }
-  .pipeline-col-body { background: rgba(0,0,0,0.02); border: 1px solid #e8e7e0; border-top: none; border-radius: 0 0 8px 8px; padding: 10px; min-height: 200px; }
-  .story-card { background: #fff; border: 1px solid #e8e7e0; border-radius: 10px; padding: 14px; margin-bottom: 8px; cursor: pointer; transition: all .15s; }
-  .story-card:hover { border-color: #1D9E75; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-  .story-card.selected { border-color: #1D9E75; background: #f0fbf7; }
-  .story-id { font-size: 10px; font-weight: 700; color: #888; letter-spacing: .06em; margin-bottom: 4px; }
-  .story-title { font-size: 13px; font-weight: 500; color: #1a1a18; line-height: 1.4; margin-bottom: 8px; }
-  .story-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
   .badge-high { background: #FCEBEB; color: #A32D2D; }
   .badge-medium { background: #FAEEDA; color: #633806; }
   .badge-low { background: #E1F5EE; color: #085041; }
-  .story-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .badge-draft { background: #f0efe8; color: #666; }
+  .badge-in_review { background: #E6F1FB; color: #0C447C; }
+  .badge-approved { background: #E1F5EE; color: #085041; }
+  .badge-deprecated { background: #f5e8e8; color: #7a3333; }
+
+  /* Feature accordion */
+  .feature-group { background: #fff; border: 1px solid #e8e7e0; border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+  .feature-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; transition: background .15s; }
+  .feature-header:hover { background: #f8f8f4; }
+  .feature-toggle { font-size: 14px; color: #aaa; transition: transform .2s; flex-shrink: 0; }
+  .feature-toggle.open { transform: rotate(90deg); }
+  .feature-name { font-size: 14px; font-weight: 600; color: #1a1a18; flex: 1; }
+  .feature-count { font-size: 12px; color: #aaa; flex-shrink: 0; }
+  .feature-priority { padding: 4px 8px; border: 1px solid #e0dfd8; border-radius: 6px; font-size: 12px; font-weight: 500; outline: none; cursor: pointer; background: #fff; flex-shrink: 0; }
+  .feature-stories { border-top: 1px solid #f0efe8; display: none; }
+  .feature-stories.open { display: block; }
+  .story-row { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid #f5f5f0; transition: background .12s; }
+  .story-row:last-child { border-bottom: none; }
+  .story-row:hover { background: #fafaf8; }
+  .story-row-check { flex-shrink: 0; }
+  .story-row-id { font-size: 10px; font-weight: 700; color: #bbb; letter-spacing: .06em; width: 80px; flex-shrink: 0; }
+  .story-row-title { flex: 1; font-size: 13px; color: #1a1a18; cursor: pointer; line-height: 1.4; }
+  .story-row-title:hover { color: #1D9E75; }
+  .story-row-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
   .bulk-bar { display: none; background: #1D9E75; color: #fff; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; }
   .bulk-bar.visible { display: flex; }
   .panel { position: fixed; right: 0; top: 0; bottom: 0; width: 540px; background: #fff; border-left: 1px solid #e8e7e0; z-index: 150; display: none; flex-direction: column; overflow: hidden; }
@@ -160,30 +169,10 @@
       <option value="medium">Medium</option>
       <option value="low">Low</option>
     </select>
-    <select class="filter" id="filter-feature" onchange="filterStories()">
-      <option value="">All features</option>
-    </select>
   </div>
 
-  <!-- Pipeline columns -->
-  <div class="pipeline">
-    <div class="pipeline-col col-draft">
-      <div class="pipeline-col-header">Draft <span id="count-draft">0</span></div>
-      <div class="pipeline-col-body" id="col-draft"></div>
-    </div>
-    <div class="pipeline-col col-review">
-      <div class="pipeline-col-header">In review <span id="count-review">0</span></div>
-      <div class="pipeline-col-body" id="col-review"></div>
-    </div>
-    <div class="pipeline-col col-approved">
-      <div class="pipeline-col-header">Approved <span id="count-approved">0</span></div>
-      <div class="pipeline-col-body" id="col-approved"></div>
-    </div>
-    <div class="pipeline-col col-deprecated">
-      <div class="pipeline-col-header">Deprecated <span id="count-deprecated">0</span></div>
-      <div class="pipeline-col-body" id="col-deprecated"></div>
-    </div>
-  </div>
+  <!-- Feature-grouped stories -->
+  <div id="features-list"></div>
 </div>
 
 <!-- Story detail panel -->
@@ -262,53 +251,73 @@ async function init() {
 
 async function loadStories() {
   allStories = await DB.stories.list(currentProjectId);
-  populateFeatureFilter();
-  renderPipeline(allStories);
+  filterStories();
 }
 
-function populateFeatureFilter() {
-  const sel = document.getElementById('filter-feature');
-  const current = sel.value;
-  const features = [...new Set(allStories.map(s => s.feature_name).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">All features</option>' +
-    features.map(f => `<option value="${f}" ${f === current ? 'selected' : ''}>${f}</option>`).join('');
-}
+const featureExpanded = {};
 
-function renderPipeline(stories) {
-  const cols = { draft: [], in_review: [], approved: [], deprecated: [] };
-  stories.forEach(s => { if (cols[s.status]) cols[s.status].push(s); });
+function renderFeatureGroups(stories) {
+  const container = document.getElementById('features-list');
+  if (!stories.length) {
+    container.innerHTML = `<div style="text-align:center;padding:48px;color:#aaa;font-size:13px">No stories yet. Click "Generate stories" to create your first ones.</div>`;
+    return;
+  }
 
-  Object.entries(cols).forEach(([status, list]) => {
-    const colId = status === 'in_review' ? 'col-review' : `col-${status}`;
-    const countId = status === 'in_review' ? 'count-review' : `count-${status}`;
-    document.getElementById(countId).textContent = list.length;
-    document.getElementById(colId).innerHTML = list.length
-      ? list.map(s => storyCard(s)).join('')
-      : `<div class="empty-col">No stories</div>`;
+  // Group by feature
+  const groups = {};
+  stories.forEach(s => {
+    const key = s.feature_name || '(No feature)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(s);
   });
+
+  container.innerHTML = Object.entries(groups).map(([feature, list]) => {
+    const isOpen = featureExpanded[feature] !== false; // open by default
+    const priority = list[0]?.priority || 'medium';
+    return `
+      <div class="feature-group" id="fg-${CSS.escape(feature)}">
+        <div class="feature-header" onclick="toggleFeature('${feature.replace(/'/g,"\\'")}')">
+          <i class="ti ti-chevron-right feature-toggle ${isOpen ? 'open' : ''}"></i>
+          <span class="feature-name">${feature}</span>
+          <span class="feature-count">${list.length} ${list.length === 1 ? 'story' : 'stories'}</span>
+          <select class="feature-priority badge badge-${priority}" onclick="event.stopPropagation()" onchange="changeFeaturePriority('${feature.replace(/'/g,"\\'")}', this.value)">
+            <option value="high" ${priority==='high'?'selected':''}>High</option>
+            <option value="medium" ${priority==='medium'?'selected':''}>Medium</option>
+            <option value="low" ${priority==='low'?'selected':''}>Low</option>
+          </select>
+        </div>
+        <div class="feature-stories ${isOpen ? 'open' : ''}">
+          ${list.map(s => storyRow(s)).join('')}
+        </div>
+      </div>`;
+  }).join('');
 }
 
-function storyCard(s) {
-  const sel = selectedIds.has(s.id);
-  return `<div class="story-card ${sel ? 'selected' : ''}" id="card-${s.id}">
-    <div style="display:flex;align-items:flex-start;gap:8px">
-      <input type="checkbox" ${sel ? 'checked' : ''} onclick="toggleSelect('${s.id}',event)" style="margin-top:2px;flex-shrink:0">
-      <div style="flex:1" onclick="openStory('${s.id}')">
-        <div class="story-id">${s.story_id || '—'}</div>
-        <div class="story-title">${s.title}</div>
-        <div class="story-meta">
-          <span class="badge badge-${s.priority || 'medium'}">${s.priority || 'medium'}</span>
-          <span style="font-size:11px;color:#aaa">v${s.version || 1}</span>
-        </div>
-        ${s.feature_name ? `<div style="margin-top:6px;font-size:11px;color:#1D9E75;font-weight:500;display:flex;align-items:center;gap:4px"><i class="ti ti-tag" style="font-size:11px"></i>${s.feature_name}</div>` : ''}
-      </div>
-    </div>
-    <div class="story-actions">
-      ${s.status === 'draft' ? `<button class="btn btn-sm btn-secondary" onclick="moveStatus('${s.id}','in_review',event)">Submit for review</button>` : ''}
+function storyRow(s) {
+  const statusLabel = { draft: 'Draft', in_review: 'In review', approved: 'Approved', deprecated: 'Deprecated' }[s.status] || s.status;
+  return `<div class="story-row" id="card-${s.id}">
+    <input type="checkbox" class="story-row-check" ${selectedIds.has(s.id)?'checked':''} onclick="toggleSelect('${s.id}',event)">
+    <span class="story-row-id">${s.story_id || '—'}</span>
+    <span class="story-row-title" onclick="openStory('${s.id}')">${s.title}</span>
+    <span class="badge badge-${s.status}">${statusLabel}</span>
+    <div class="story-row-actions">
+      ${s.status === 'draft' ? `<button class="btn btn-sm btn-secondary" onclick="moveStatus('${s.id}','in_review',event)">Review</button>` : ''}
       ${s.status === 'in_review' ? `<button class="btn btn-sm btn-primary" onclick="moveStatus('${s.id}','approved',event)">Approve</button>` : ''}
       ${s.status !== 'deprecated' ? `<button class="btn btn-sm btn-danger" onclick="moveStatus('${s.id}','deprecated',event)">Deprecate</button>` : ''}
     </div>
   </div>`;
+}
+
+function toggleFeature(feature) {
+  featureExpanded[feature] = featureExpanded[feature] === false ? true : false;
+  filterStories();
+}
+
+async function changeFeaturePriority(feature, priority) {
+  const ids = allStories.filter(s => (s.feature_name || '(No feature)') === feature).map(s => s.id);
+  await Promise.all(ids.map(id => DB.stories.update(id, { priority })));
+  allStories.forEach(s => { if ((s.feature_name || '(No feature)') === feature) s.priority = priority; });
+  filterStories();
 }
 
 async function openStory(id) {
@@ -423,14 +432,12 @@ function filterStories() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const status = document.getElementById('filter-status').value;
   const priority = document.getElementById('filter-priority').value;
-  const feature = document.getElementById('filter-feature').value;
   const filtered = allStories.filter(s =>
     (!q || s.title.toLowerCase().includes(q) || (s.story_id || '').toLowerCase().includes(q)) &&
     (!status || s.status === status) &&
-    (!priority || s.priority === priority) &&
-    (!feature || s.feature_name === feature)
+    (!priority || s.priority === priority)
   );
-  renderPipeline(filtered);
+  renderFeatureGroups(filtered);
 }
 
 let storyRowSeq = 0;
